@@ -1,0 +1,60 @@
+name: Backend and Frontend CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  backend-test:
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:15
+        env:
+          POSTGRES_USER: admin
+          POSTGRES_PASSWORD: admin
+          POSTGRES_DB: dental_test
+        ports:
+          - "5432:5432"
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - run: pip install -r requirements.txt -r requirements-dev.txt
+        working-directory: backend
+      - run: pytest --cov=app --cov-fail-under=80
+        working-directory: backend
+        env:
+          DATABASE_URL: postgresql+asyncpg://admin:admin@localhost:5432/dental_test
+          TEST_DATABASE_URL: postgresql+asyncpg://admin:admin@localhost:5432/dental_test
+          JWT_SECRET_KEY: test-secret-key-for-ci-only-with-minimum-length
+          FILE_STORAGE_BACKEND: local
+          LOCAL_STORAGE_PATH: data/storage
+          AWS_ACCESS_KEY_ID: test
+          AWS_SECRET_ACCESS_KEY: test
+          AWS_REGION: ap-south-1
+          S3_BUCKET_NAME: dental-clinic-files
+          WATI_API_URL: https://example.invalid
+          WATI_API_TOKEN: test
+
+  frontend-test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: subosito/flutter-action@v2
+        with:
+          channel: stable
+      - run: flutter pub get
+        working-directory: frontend
+      - run: flutter analyze
+        working-directory: frontend
+      - run: flutter test
+        working-directory: frontend

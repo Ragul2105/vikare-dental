@@ -1,0 +1,5 @@
+from __future__ import annotations
+
+
+def calculate_offset(page: int, page_size: int) -> int:
+    return (page - 1) * page_size

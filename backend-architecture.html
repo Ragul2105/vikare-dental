@@ -1,0 +1,873 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>Backend Architecture – Dental Clinic API</title>
+<style>
+  :root {
+    --bg: #0f1117;
+    --surface: #1a1d27;
+    --surface2: #22263a;
+    --border: #2e3350;
+    --accent: #4f8ef7;
+    --accent2: #7c5cbf;
+    --green: #3ecf8e;
+    --orange: #f5a623;
+    --red: #e05252;
+    --teal: #38bdf8;
+    --text: #e2e8f0;
+    --muted: #8892a4;
+    --heading: #ffffff;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    font-family: 'Segoe UI', system-ui, sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    line-height: 1.65;
+  }
+
+  /* ── Header ── */
+  .hero {
+    background: linear-gradient(135deg, #0f1117 0%, #1a1d27 50%, #13162a 100%);
+    border-bottom: 1px solid var(--border);
+    padding: 48px 64px 40px;
+    position: relative;
+    overflow: hidden;
+  }
+  .hero::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background: radial-gradient(ellipse at 70% 50%, rgba(79,142,247,.12) 0%, transparent 70%);
+    pointer-events: none;
+  }
+  .hero-tag { font-size: 11px; letter-spacing: 2px; text-transform: uppercase; color: var(--accent); margin-bottom: 12px; }
+  .hero h1 { font-size: 36px; font-weight: 700; color: var(--heading); margin-bottom: 10px; }
+  .hero p { font-size: 15px; color: var(--muted); max-width: 640px; }
+  .pill-row { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 20px; }
+  .pill {
+    font-size: 12px; padding: 4px 12px; border-radius: 999px;
+    border: 1px solid var(--border); color: var(--muted); background: var(--surface2);
+  }
+  .pill.a { border-color: var(--accent); color: var(--accent); }
+  .pill.g { border-color: var(--green); color: var(--green); }
+  .pill.o { border-color: var(--orange); color: var(--orange); }
+  .pill.t { border-color: var(--teal); color: var(--teal); }
+
+  /* ── Layout ── */
+  .container { max-width: 1180px; margin: 0 auto; padding: 48px 40px; }
+  .section { margin-bottom: 64px; }
+  .section-title {
+    font-size: 22px; font-weight: 700; color: var(--heading);
+    margin-bottom: 6px; display: flex; align-items: center; gap: 10px;
+  }
+  .section-title::before {
+    content: ''; display: block; width: 4px; height: 22px;
+    border-radius: 2px; background: var(--accent);
+  }
+  .section-subtitle { font-size: 14px; color: var(--muted); margin-bottom: 28px; margin-left: 14px; }
+
+  /* ── Cards ── */
+  .card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 24px;
+    margin-bottom: 16px;
+  }
+  .card-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 16px; }
+
+  .layer-card {
+    border-radius: 10px;
+    padding: 18px 20px;
+    border-left: 3px solid;
+  }
+  .layer-card h3 { font-size: 14px; font-weight: 600; margin-bottom: 8px; }
+  .layer-card ul { font-size: 13px; color: var(--muted); list-style: none; padding: 0; }
+  .layer-card ul li { padding: 2px 0; }
+  .layer-card ul li::before { content: '→ '; color: inherit; opacity: 0.6; }
+
+  /* ── SVG diagrams ── */
+  svg { display: block; width: 100%; height: auto; }
+  .diagram-wrap {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 24px;
+    overflow-x: auto;
+  }
+  .diagram-caption {
+    font-size: 12px; color: var(--muted);
+    text-align: center; margin-top: 10px; font-style: italic;
+  }
+
+  /* ── Table ── */
+  table { width: 100%; border-collapse: collapse; font-size: 13px; }
+  th { background: var(--surface2); color: var(--muted); font-weight: 600;
+       text-align: left; padding: 10px 14px; border-bottom: 1px solid var(--border); }
+  td { padding: 9px 14px; border-bottom: 1px solid var(--border); vertical-align: top; }
+  tr:last-child td { border-bottom: none; }
+  .badge {
+    display: inline-block; font-size: 11px; padding: 2px 8px; border-radius: 4px;
+    font-weight: 600;
+  }
+  .badge-blue { background: rgba(79,142,247,.15); color: var(--accent); }
+  .badge-green { background: rgba(62,207,142,.15); color: var(--green); }
+  .badge-orange { background: rgba(245,166,35,.15); color: var(--orange); }
+  .badge-red { background: rgba(224,82,82,.15); color: var(--red); }
+  .badge-purple { background: rgba(124,92,191,.15); color: var(--accent2); }
+  .badge-teal { background: rgba(56,189,248,.15); color: var(--teal); }
+
+  /* ── Two-col ── */
+  .two-col { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
+  @media(max-width:720px) { .two-col { grid-template-columns: 1fr; } }
+
+  /* ── Flow list ── */
+  .flow-steps { list-style: none; padding: 0; }
+  .flow-steps li {
+    display: flex; gap: 14px; align-items: flex-start;
+    padding: 10px 0; border-bottom: 1px solid var(--border);
+  }
+  .flow-steps li:last-child { border-bottom: none; }
+  .step-num {
+    flex-shrink: 0; width: 26px; height: 26px; border-radius: 50%;
+    background: var(--accent); color: #fff;
+    font-size: 12px; font-weight: 700;
+    display: flex; align-items: center; justify-content: center;
+  }
+  .step-text strong { display: block; font-size: 14px; color: var(--heading); }
+  .step-text span { font-size: 13px; color: var(--muted); }
+
+  footer {
+    border-top: 1px solid var(--border);
+    padding: 24px 40px;
+    font-size: 12px;
+    color: var(--muted);
+    text-align: center;
+  }
+</style>
+</head>
+<body>
+
+<!-- ═══════════ HERO ═══════════ -->
+<div class="hero">
+  <div class="hero-tag">Architecture Document · Backend</div>
+  <h1>Dental Clinic API — Backend Architecture</h1>
+  <p>A complete structural guide covering the layered architecture, database schema, request lifecycle, authentication flow, file storage strategy, and background job design of the FastAPI-based backend.</p>
+  <div class="pill-row">
+    <span class="pill a">FastAPI 0.115</span>
+    <span class="pill a">Python 3.12</span>
+    <span class="pill g">PostgreSQL</span>
+    <span class="pill g">SQLAlchemy 2.0 (Async)</span>
+    <span class="pill o">Alembic</span>
+    <span class="pill o">Pydantic v2</span>
+    <span class="pill t">JWT Auth</span>
+    <span class="pill t">AWS S3 / Local FS</span>
+    <span class="pill">WATI WhatsApp</span>
+    <span class="pill">APScheduler</span>
+    <span class="pill">SlowAPI</span>
+    <span class="pill">Structlog</span>
+  </div>
+</div>
+
+<div class="container">
+
+<!-- ═══════════ 1. LAYER ARCHITECTURE ═══════════ -->
+<div class="section">
+  <div class="section-title">1. Layered Architecture Overview</div>
+  <div class="section-subtitle">The backend is built in a strict 4-layer pattern: Routing → Services → Models → Database</div>
+
+  <div class="diagram-wrap">
+    <svg viewBox="0 0 960 420" xmlns="http://www.w3.org/2000/svg" font-family="'Segoe UI',system-ui,sans-serif">
+      <defs>
+        <marker id="arr" markerWidth="8" markerHeight="6" refX="8" refY="3" orient="auto">
+          <polygon points="0 0, 8 3, 0 6" fill="#4f8ef7"/>
+        </marker>
+        <filter id="glow">
+          <feGaussianBlur stdDeviation="2" result="blur"/>
+          <feMerge><feMergeNode in="blur"/><feMergeNode in="SourceGraphic"/></feMerge>
+        </filter>
+      </defs>
+
+      <!-- Client -->
+      <rect x="10" y="170" width="130" height="80" rx="8" fill="#1a1d27" stroke="#4f8ef7" stroke-width="1.5"/>
+      <text x="75" y="205" text-anchor="middle" fill="#4f8ef7" font-size="12" font-weight="600">Flutter Client</text>
+      <text x="75" y="225" text-anchor="middle" fill="#8892a4" font-size="11">HTTP / REST</text>
+      <text x="75" y="240" text-anchor="middle" fill="#8892a4" font-size="11">Bearer JWT</text>
+
+      <!-- Arrow -->
+      <line x1="140" y1="210" x2="200" y2="210" stroke="#4f8ef7" stroke-width="1.5" marker-end="url(#arr)"/>
+
+      <!-- Middleware Layer -->
+      <rect x="200" y="60" width="155" height="300" rx="10" fill="#13162a" stroke="#2e3350" stroke-width="1"/>
+      <text x="277" y="90" text-anchor="middle" fill="#8892a4" font-size="11" font-weight="600" letter-spacing="1">MIDDLEWARE</text>
+      <rect x="215" y="100" width="125" height="42" rx="6" fill="#1a1d27" stroke="#2e3350"/>
+      <text x="277" y="118" text-anchor="middle" fill="#e2e8f0" font-size="11" font-weight="500">CORS</text>
+      <text x="277" y="133" text-anchor="middle" fill="#8892a4" font-size="10">Origin filtering</text>
+      <rect x="215" y="152" width="125" height="42" rx="6" fill="#1a1d27" stroke="#2e3350"/>
+      <text x="277" y="170" text-anchor="middle" fill="#e2e8f0" font-size="11" font-weight="500">RequestID Logger</text>
+      <text x="277" y="185" text-anchor="middle" fill="#8892a4" font-size="10">Structlog JSON</text>
+      <rect x="215" y="204" width="125" height="42" rx="6" fill="#1a1d27" stroke="#2e3350"/>
+      <text x="277" y="222" text-anchor="middle" fill="#e2e8f0" font-size="11" font-weight="500">Activity Logger</text>
+      <text x="277" y="237" text-anchor="middle" fill="#8892a4" font-size="10">POST/PATCH/DELETE</text>
+      <rect x="215" y="256" width="125" height="42" rx="6" fill="#1a1d27" stroke="#2e3350"/>
+      <text x="277" y="274" text-anchor="middle" fill="#e2e8f0" font-size="11" font-weight="500">Rate Limiter</text>
+      <text x="277" y="289" text-anchor="middle" fill="#8892a4" font-size="10">SlowAPI 200/min</text>
+      <rect x="215" y="308" width="125" height="42" rx="6" fill="#1a1d27" stroke="#2e3350"/>
+      <text x="277" y="326" text-anchor="middle" fill="#e2e8f0" font-size="11" font-weight="500">Exception Handlers</text>
+      <text x="277" y="341" text-anchor="middle" fill="#8892a4" font-size="10">422 / 4xx / 5xx</text>
+
+      <!-- Arrow -->
+      <line x1="355" y1="210" x2="415" y2="210" stroke="#4f8ef7" stroke-width="1.5" marker-end="url(#arr)"/>
+
+      <!-- Router Layer -->
+      <rect x="415" y="60" width="145" height="300" rx="10" fill="#13162a" stroke="#4f8ef7" stroke-width="1.5"/>
+      <text x="487" y="90" text-anchor="middle" fill="#4f8ef7" font-size="11" font-weight="600" letter-spacing="1">ROUTERS</text>
+      <rect x="428" y="100" width="119" height="32" rx="5" fill="#0d1220" stroke="#1e2540"/>
+      <text x="487" y="120" text-anchor="middle" fill="#e2e8f0" font-size="11">/auth</text>
+      <rect x="428" y="138" width="119" height="32" rx="5" fill="#0d1220" stroke="#1e2540"/>
+      <text x="487" y="158" text-anchor="middle" fill="#e2e8f0" font-size="11">/patients</text>
+      <rect x="428" y="176" width="119" height="32" rx="5" fill="#0d1220" stroke="#1e2540"/>
+      <text x="487" y="196" text-anchor="middle" fill="#e2e8f0" font-size="11">/appointments</text>
+      <rect x="428" y="214" width="119" height="32" rx="5" fill="#0d1220" stroke="#1e2540"/>
+      <text x="487" y="234" text-anchor="middle" fill="#e2e8f0" font-size="11">/visits</text>
+      <rect x="428" y="252" width="119" height="32" rx="5" fill="#0d1220" stroke="#1e2540"/>
+      <text x="487" y="272" text-anchor="middle" fill="#e2e8f0" font-size="11">/staff · /masters</text>
+      <rect x="428" y="290" width="119" height="32" rx="5" fill="#0d1220" stroke="#1e2540"/>
+      <text x="487" y="310" text-anchor="middle" fill="#e2e8f0" font-size="11">/dashboard · /health</text>
+      <rect x="428" y="328" width="119" height="22" rx="5" fill="#0d1220" stroke="#f5a623" stroke-dasharray="3,2"/>
+      <text x="487" y="343" text-anchor="middle" fill="#f5a623" font-size="11">/inventory (addon)</text>
+
+      <!-- Arrow -->
+      <line x1="560" y1="210" x2="620" y2="210" stroke="#4f8ef7" stroke-width="1.5" marker-end="url(#arr)"/>
+
+      <!-- Service Layer -->
+      <rect x="620" y="60" width="145" height="300" rx="10" fill="#13162a" stroke="#3ecf8e" stroke-width="1.5"/>
+      <text x="692" y="90" text-anchor="middle" fill="#3ecf8e" font-size="11" font-weight="600" letter-spacing="1">SERVICES</text>
+      <rect x="633" y="100" width="119" height="32" rx="5" fill="#0d1220" stroke="#1e2540"/>
+      <text x="692" y="120" text-anchor="middle" fill="#e2e8f0" font-size="11">AuthService</text>
+      <rect x="633" y="138" width="119" height="32" rx="5" fill="#0d1220" stroke="#1e2540"/>
+      <text x="692" y="158" text-anchor="middle" fill="#e2e8f0" font-size="11">PatientService</text>
+      <rect x="633" y="176" width="119" height="32" rx="5" fill="#0d1220" stroke="#1e2540"/>
+      <text x="692" y="196" text-anchor="middle" fill="#e2e8f0" font-size="11">VisitService</text>
+      <rect x="633" y="214" width="119" height="32" rx="5" fill="#0d1220" stroke="#1e2540"/>
+      <text x="692" y="234" text-anchor="middle" fill="#e2e8f0" font-size="11">AppointmentService</text>
+      <rect x="633" y="252" width="119" height="32" rx="5" fill="#0d1220" stroke="#1e2540"/>
+      <text x="692" y="272" text-anchor="middle" fill="#e2e8f0" font-size="11">S3Service</text>
+      <rect x="633" y="290" width="119" height="32" rx="5" fill="#0d1220" stroke="#1e2540"/>
+      <text x="692" y="310" text-anchor="middle" fill="#e2e8f0" font-size="11">PDFService</text>
+      <rect x="633" y="328" width="119" height="22" rx="5" fill="#0d1220" stroke="#1e2540"/>
+      <text x="692" y="343" text-anchor="middle" fill="#8892a4" font-size="11">WhatsAppService</text>
+
+      <!-- Arrow -->
+      <line x1="765" y1="210" x2="820" y2="210" stroke="#4f8ef7" stroke-width="1.5" marker-end="url(#arr)"/>
+
+      <!-- DB Layer -->
+      <rect x="820" y="120" width="130" height="185" rx="10" fill="#13162a" stroke="#f5a623" stroke-width="1.5"/>
+      <text x="885" y="148" text-anchor="middle" fill="#f5a623" font-size="11" font-weight="600" letter-spacing="1">DATABASE</text>
+      <rect x="833" y="158" width="104" height="26" rx="5" fill="#0d1220" stroke="#1e2540"/>
+      <text x="885" y="175" text-anchor="middle" fill="#e2e8f0" font-size="11">PostgreSQL</text>
+      <rect x="833" y="192" width="104" height="26" rx="5" fill="#0d1220" stroke="#1e2540"/>
+      <text x="885" y="209" text-anchor="middle" fill="#e2e8f0" font-size="11">SQLAlchemy ORM</text>
+      <rect x="833" y="226" width="104" height="26" rx="5" fill="#0d1220" stroke="#1e2540"/>
+      <text x="885" y="243" text-anchor="middle" fill="#e2e8f0" font-size="11">Async Sessions</text>
+      <rect x="833" y="260" width="104" height="26" rx="5" fill="#0d1220" stroke="#1e2540"/>
+      <text x="885" y="277" text-anchor="middle" fill="#e2e8f0" font-size="11">Alembic Migrations</text>
+
+      <!-- Dependency injection note -->
+      <text x="487" y="405" text-anchor="middle" fill="#8892a4" font-size="11" font-style="italic">Dependencies injected via FastAPI Depends() — get_db(), get_current_user(), require_role()</text>
+    </svg>
+    <p class="diagram-caption">Figure 1 — Request passes through Middleware stack → Router → Service → Database. All layers communicate via FastAPI dependency injection.</p>
+  </div>
+</div>
+
+<!-- ═══════════ 2. REQUEST LIFECYCLE ═══════════ -->
+<div class="section">
+  <div class="section-title">2. Request Lifecycle & Data Flow</div>
+  <div class="section-subtitle">Every authenticated API call follows this precise lifecycle from network entry to response</div>
+
+  <div class="two-col">
+    <div class="card">
+      <h3 style="color:var(--accent);font-size:14px;margin-bottom:16px;">Inbound Request Flow</h3>
+      <ul class="flow-steps">
+        <li>
+          <div class="step-num">1</div>
+          <div class="step-text"><strong>CORS & Rate Limit Check</strong><span>200 req/min per IP enforced by SlowAPI. CORS origins validated from env config.</span></div>
+        </li>
+        <li>
+          <div class="step-num">2</div>
+          <div class="step-text"><strong>Request ID Assigned</strong><span>RequestLoggingMiddleware attaches a UUID to <code>request.state.request_id</code> for tracing.</span></div>
+        </li>
+        <li>
+          <div class="step-num">3</div>
+          <div class="step-text"><strong>JWT Verification (get_current_user)</strong><span>Bearer token decoded → user UUID extracted → User fetched from DB → stored in request.state.</span></div>
+        </li>
+        <li>
+          <div class="step-num">4</div>
+          <div class="step-text"><strong>Role Guard (require_role)</strong><span>require_admin / require_any_staff composables check role on the resolved User object.</span></div>
+        </li>
+        <li>
+          <div class="step-num">5</div>
+          <div class="step-text"><strong>Pydantic Schema Validation</strong><span>Request body is automatically validated against the Pydantic BaseModel schema. Returns 422 on failure.</span></div>
+        </li>
+        <li>
+          <div class="step-num">6</div>
+          <div class="step-text"><strong>Service Layer Execution</strong><span>Router delegates to a Service instance, passing AsyncSession (get_db). Business logic runs here.</span></div>
+        </li>
+        <li>
+          <div class="step-num">7</div>
+          <div class="step-text"><strong>DB Commit / Rollback</strong><span>get_db() commits on success or rolls back on any exception before yielding.</span></div>
+        </li>
+        <li>
+          <div class="step-num">8</div>
+          <div class="step-text"><strong>Activity Log (background)</strong><span>ActivityLoggerMiddleware attaches a BackgroundTask to log POST/PATCH/DELETE to activity_logs after response is sent.</span></div>
+        </li>
+      </ul>
+    </div>
+
+    <div class="card">
+      <h3 style="color:var(--green);font-size:14px;margin-bottom:16px;">Dependency Injection Graph</h3>
+      <div style="font-size:13px;">
+        <div style="background:var(--surface2);border-radius:8px;padding:16px;font-family:monospace;line-height:2;">
+          <span style="color:#4f8ef7;">Router endpoint</span><br/>
+          &nbsp;&nbsp;└─ <span style="color:#3ecf8e;">get_db()</span> → AsyncSession<br/>
+          &nbsp;&nbsp;└─ <span style="color:#3ecf8e;">get_current_user()</span><br/>
+          &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;├─ <span style="color:#8892a4;">HTTPBearer credentials</span><br/>
+          &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;├─ <span style="color:#8892a4;">decode_token()</span><br/>
+          &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;└─ <span style="color:#8892a4;">db.get(User, id)</span><br/>
+          &nbsp;&nbsp;└─ <span style="color:#3ecf8e;">require_role("admin")</span><br/>
+          &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;└─ <span style="color:#8892a4;">wraps get_current_user</span><br/>
+          &nbsp;&nbsp;└─ <span style="color:#f5a623;">ServiceClass(db)</span><br/>
+          &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;└─ <span style="color:#8892a4;">business logic</span><br/>
+          &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;└─ <span style="color:#8892a4;">selectinload(relations)</span>
+        </div>
+        <p style="font-size:12px;color:var(--muted);margin-top:12px;">Services receive the AsyncSession injected from the router. Each service is instantiated fresh per request — no shared state.</p>
+      </div>
+
+      <h3 style="color:var(--orange);font-size:14px;margin-top:20px;margin-bottom:12px;">Error Response Contract</h3>
+      <div style="font-family:monospace;font-size:12px;background:var(--surface2);border-radius:8px;padding:14px;line-height:1.8;">
+        <span style="color:#3ecf8e;">{</span><br/>
+        &nbsp;&nbsp;<span style="color:#4f8ef7;">"error_code"</span>: <span style="color:#f5a623;">"VALIDATION_ERROR"</span>,<br/>
+        &nbsp;&nbsp;<span style="color:#4f8ef7;">"message"</span>: <span style="color:#f5a623;">"Human-readable text"</span>,<br/>
+        &nbsp;&nbsp;<span style="color:#4f8ef7;">"details"</span>: <span style="color:#8892a4;">{ ...context }</span><br/>
+        <span style="color:#3ecf8e;">}</span>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════ 3. DATABASE ERD ═══════════ -->
+<div class="section">
+  <div class="section-title">3. Database Schema — Entity Relationship Diagram</div>
+  <div class="section-subtitle">PostgreSQL with UUID primary keys, timezone-aware timestamps, and full referential integrity via foreign keys</div>
+
+  <div class="diagram-wrap">
+    <svg viewBox="0 0 1060 700" xmlns="http://www.w3.org/2000/svg" font-family="'Segoe UI',system-ui,sans-serif" font-size="11">
+      <defs>
+        <marker id="fk" markerWidth="8" markerHeight="6" refX="0" refY="3" orient="auto">
+          <polygon points="8 0, 0 3, 8 6" fill="#4f8ef7" opacity="0.6"/>
+        </marker>
+        <marker id="fk2" markerWidth="8" markerHeight="6" refX="8" refY="3" orient="auto">
+          <polygon points="0 0, 8 3, 0 6" fill="#4f8ef7" opacity="0.6"/>
+        </marker>
+      </defs>
+
+      <!-- ── USERS ── -->
+      <g transform="translate(10,20)">
+        <rect width="160" height="175" rx="8" fill="#1a1d27" stroke="#4f8ef7" stroke-width="1.5"/>
+        <rect width="160" height="32" rx="8" fill="#4f8ef7"/>
+        <rect y="24" width="160" height="8" fill="#4f8ef7"/>
+        <text x="80" y="22" text-anchor="middle" fill="#fff" font-weight="700" font-size="12">users</text>
+        <text x="10" y="54" fill="#4f8ef7">🔑</text><text x="26" y="54" fill="#e2e8f0">id (UUID PK)</text>
+        <text x="10" y="74" fill="#8892a4">  name (VARCHAR 100, UNIQUE)</text>
+        <text x="10" y="94" fill="#8892a4">  role (VARCHAR 20)</text>
+        <text x="10" y="114" fill="#8892a4">  pin_hash (VARCHAR 255)</text>
+        <text x="10" y="134" fill="#8892a4">  is_active (BOOL)</text>
+        <text x="10" y="154" fill="#8892a4">  last_login_at (TIMESTAMPTZ)</text>
+        <text x="10" y="174" fill="#8892a4">  created_at / updated_at</text>
+      </g>
+
+      <!-- ── PATIENTS ── -->
+      <g transform="translate(220,20)">
+        <rect width="200" height="255" rx="8" fill="#1a1d27" stroke="#3ecf8e" stroke-width="1.5"/>
+        <rect width="200" height="32" rx="8" fill="#3ecf8e"/>
+        <rect y="24" width="200" height="8" fill="#3ecf8e"/>
+        <text x="100" y="22" text-anchor="middle" fill="#fff" font-weight="700" font-size="12">patients</text>
+        <text x="10" y="54" fill="#4f8ef7">🔑</text><text x="26" y="54" fill="#e2e8f0">id (UUID PK)</text>
+        <text x="10" y="74" fill="#e2e8f0">  patient_uid (VARCHAR, UNIQUE)</text>
+        <text x="10" y="94" fill="#8892a4">  name (VARCHAR 150)</text>
+        <text x="10" y="114" fill="#8892a4">  age, gender</text>
+        <text x="10" y="134" fill="#8892a4">  mobile (VARCHAR 15)</text>
+        <text x="10" y="154" fill="#8892a4">  whatsapp_enabled (BOOL)</text>
+        <text x="10" y="174" fill="#8892a4">  address, medical_history</text>
+        <text x="10" y="194" fill="#8892a4">  allergies</text>
+        <text x="10" y="214" fill="#e05252">  is_deleted, deleted_at</text>
+        <text x="10" y="234" fill="#e05252">  deletion_reason</text>
+        <text x="10" y="254" fill="#8892a4">  created_by (FK → users)</text>
+      </g>
+
+      <!-- ── APPOINTMENTS ── -->
+      <g transform="translate(470,20)">
+        <rect width="195" height="215" rx="8" fill="#1a1d27" stroke="#f5a623" stroke-width="1.5"/>
+        <rect width="195" height="32" rx="8" fill="#f5a623"/>
+        <rect y="24" width="195" height="8" fill="#f5a623"/>
+        <text x="97" y="22" text-anchor="middle" fill="#fff" font-weight="700" font-size="12">appointments</text>
+        <text x="10" y="54" fill="#4f8ef7">🔑</text><text x="26" y="54" fill="#e2e8f0">id (UUID PK)</text>
+        <text x="10" y="74" fill="#e2e8f0">  patient_id (FK → patients)</text>
+        <text x="10" y="94" fill="#8892a4">  scheduled_at (TIMESTAMPTZ)</text>
+        <text x="10" y="114" fill="#8892a4">  duration_minutes (INT, 30)</text>
+        <text x="10" y="134" fill="#f5a623">  status: scheduled/completed</text>
+        <text x="10" y="154" fill="#8892a4">  reason, notes</text>
+        <text x="10" y="174" fill="#8892a4">  created_by (FK → users)</text>
+        <text x="10" y="194" fill="#8892a4">  created_at / updated_at</text>
+      </g>
+
+      <!-- ── VISITS ── -->
+      <g transform="translate(220,320)">
+        <rect width="200" height="195" rx="8" fill="#1a1d27" stroke="#7c5cbf" stroke-width="1.5"/>
+        <rect width="200" height="32" rx="8" fill="#7c5cbf"/>
+        <rect y="24" width="200" height="8" fill="#7c5cbf"/>
+        <text x="100" y="22" text-anchor="middle" fill="#fff" font-weight="700" font-size="12">visits</text>
+        <text x="10" y="54" fill="#4f8ef7">🔑</text><text x="26" y="54" fill="#e2e8f0">id (UUID PK)</text>
+        <text x="10" y="74" fill="#e2e8f0">  patient_id (FK → patients)</text>
+        <text x="10" y="94" fill="#e2e8f0">  appointment_id (FK, nullable)</text>
+        <text x="10" y="114" fill="#8892a4">  visit_date (DATE)</text>
+        <text x="10" y="134" fill="#8892a4">  notes (TEXT)</text>
+        <text x="10" y="154" fill="#8892a4">  diagnosis (TEXT)</text>
+        <text x="10" y="174" fill="#8892a4">  created_by (FK → users)</text>
+      </g>
+
+      <!-- ── VISIT_TREATMENTS ── -->
+      <g transform="translate(10,380)">
+        <rect width="185" height="130" rx="8" fill="#1a1d27" stroke="#38bdf8" stroke-width="1.5"/>
+        <rect width="185" height="28" rx="8" fill="#38bdf8"/>
+        <rect y="20" width="185" height="8" fill="#38bdf8"/>
+        <text x="92" y="20" text-anchor="middle" fill="#fff" font-weight="700" font-size="12">visit_treatments</text>
+        <text x="10" y="46" fill="#4f8ef7">🔑</text><text x="26" y="46" fill="#e2e8f0">id (UUID PK)</text>
+        <text x="10" y="66" fill="#e2e8f0">  visit_id (FK → visits)</text>
+        <text x="10" y="86" fill="#e2e8f0">  treatment_id (FK → masters)</text>
+        <text x="10" y="106" fill="#8892a4">  notes (TEXT)</text>
+      </g>
+
+      <!-- ── VISIT_MEDICATIONS ── -->
+      <g transform="translate(10,540)">
+        <rect width="185" height="150" rx="8" fill="#1a1d27" stroke="#38bdf8" stroke-width="1.5"/>
+        <rect width="185" height="28" rx="8" fill="#38bdf8"/>
+        <rect y="20" width="185" height="8" fill="#38bdf8"/>
+        <text x="92" y="20" text-anchor="middle" fill="#fff" font-weight="700" font-size="12">visit_medications</text>
+        <text x="10" y="46" fill="#4f8ef7">🔑</text><text x="26" y="46" fill="#e2e8f0">id (UUID PK)</text>
+        <text x="10" y="66" fill="#e2e8f0">  visit_id (FK → visits)</text>
+        <text x="10" y="86" fill="#e2e8f0">  medication_id (FK → masters)</text>
+        <text x="10" y="106" fill="#8892a4">  dosage (VARCHAR 100)</text>
+        <text x="10" y="126" fill="#8892a4">  quantity (INT)</text>
+      </g>
+
+      <!-- ── TREATMENT_MASTERS ── -->
+      <g transform="translate(470,320)">
+        <rect width="180" height="155" rx="8" fill="#1a1d27" stroke="#8892a4" stroke-width="1.5"/>
+        <rect width="180" height="28" rx="8" fill="#3a3f52"/>
+        <rect y="20" width="180" height="8" fill="#3a3f52"/>
+        <text x="90" y="20" text-anchor="middle" fill="#fff" font-weight="700" font-size="12">treatment_masters</text>
+        <text x="10" y="46" fill="#4f8ef7">🔑</text><text x="26" y="46" fill="#e2e8f0">id (UUID PK)</text>
+        <text x="10" y="66" fill="#8892a4">  name (UNIQUE)</text>
+        <text x="10" y="86" fill="#8892a4">  description</text>
+        <text x="10" y="106" fill="#8892a4">  is_active (BOOL)</text>
+        <text x="10" y="126" fill="#8892a4">  created_by (FK → users)</text>
+      </g>
+
+      <!-- ── MEDICATION_MASTERS ── -->
+      <g transform="translate(470,510)">
+        <rect width="180" height="165" rx="8" fill="#1a1d27" stroke="#8892a4" stroke-width="1.5"/>
+        <rect width="180" height="28" rx="8" fill="#3a3f52"/>
+        <rect y="20" width="180" height="8" fill="#3a3f52"/>
+        <text x="90" y="20" text-anchor="middle" fill="#fff" font-weight="700" font-size="12">medication_masters</text>
+        <text x="10" y="46" fill="#4f8ef7">🔑</text><text x="26" y="46" fill="#e2e8f0">id (UUID PK)</text>
+        <text x="10" y="66" fill="#8892a4">  name (UNIQUE)</text>
+        <text x="10" y="86" fill="#8892a4">  description</text>
+        <text x="10" y="106" fill="#8892a4">  default_dosage</text>
+        <text x="10" y="126" fill="#8892a4">  is_active (BOOL)</text>
+        <text x="10" y="146" fill="#8892a4">  created_by (FK → users)</text>
+      </g>
+
+      <!-- ── VISIT_PHOTOS ── -->
+      <g transform="translate(700,320)">
+        <rect width="175" height="175" rx="8" fill="#1a1d27" stroke="#8892a4" stroke-width="1.5"/>
+        <rect width="175" height="28" rx="8" fill="#3a3f52"/>
+        <rect y="20" width="175" height="8" fill="#3a3f52"/>
+        <text x="87" y="20" text-anchor="middle" fill="#fff" font-weight="700" font-size="12">visit_photos</text>
+        <text x="10" y="46" fill="#4f8ef7">🔑</text><text x="26" y="46" fill="#e2e8f0">id (UUID PK)</text>
+        <text x="10" y="66" fill="#e2e8f0">  visit_id (FK → visits)</text>
+        <text x="10" y="86" fill="#8892a4">  s3_key (VARCHAR 500)</text>
+        <text x="10" y="106" fill="#8892a4">  photo_url (VARCHAR 1000)</text>
+        <text x="10" y="126" fill="#8892a4">  caption (TEXT)</text>
+        <text x="10" y="146" fill="#8892a4">  uploaded_by (FK → users)</text>
+        <text x="10" y="166" fill="#8892a4">  uploaded_at (TIMESTAMPTZ)</text>
+      </g>
+
+      <!-- ── PRESCRIPTIONS ── -->
+      <g transform="translate(700,530)">
+        <rect width="175" height="130" rx="8" fill="#1a1d27" stroke="#8892a4" stroke-width="1.5"/>
+        <rect width="175" height="28" rx="8" fill="#3a3f52"/>
+        <rect y="20" width="175" height="8" fill="#3a3f52"/>
+        <text x="87" y="20" text-anchor="middle" fill="#fff" font-weight="700" font-size="12">prescriptions</text>
+        <text x="10" y="46" fill="#4f8ef7">🔑</text><text x="26" y="46" fill="#e2e8f0">id (UUID PK)</text>
+        <text x="10" y="66" fill="#e2e8f0">  visit_id (FK, UNIQUE)</text>
+        <text x="10" y="86" fill="#8892a4">  s3_key (VARCHAR 500)</text>
+        <text x="10" y="106" fill="#8892a4">  pdf_url (VARCHAR 1000)</text>
+      </g>
+
+      <!-- ── ACTIVITY_LOGS ── -->
+      <g transform="translate(870,20)">
+        <rect width="180" height="175" rx="8" fill="#1a1d27" stroke="#8892a4" stroke-width="1.5" stroke-dasharray="4,2"/>
+        <rect width="180" height="28" rx="8" fill="#2a2d3a"/>
+        <rect y="20" width="180" height="8" fill="#2a2d3a"/>
+        <text x="90" y="20" text-anchor="middle" fill="#8892a4" font-weight="700" font-size="12">activity_logs</text>
+        <text x="10" y="46" fill="#4f8ef7">🔑</text><text x="26" y="46" fill="#e2e8f0">id (UUID PK)</text>
+        <text x="10" y="66" fill="#e2e8f0">  user_id (FK, nullable)</text>
+        <text x="10" y="86" fill="#8892a4">  action (POST/PATCH/DELETE)</text>
+        <text x="10" y="106" fill="#8892a4">  entity_type (VARCHAR 50)</text>
+        <text x="10" y="126" fill="#8892a4">  entity_id (VARCHAR 100)</text>
+        <text x="10" y="146" fill="#8892a4">  details (JSONB)</text>
+        <text x="10" y="166" fill="#8892a4">  created_at (TIMESTAMPTZ)</text>
+      </g>
+
+      <!-- ── WHATSAPP_MESSAGES ── -->
+      <g transform="translate(870,230)">
+        <rect width="180" height="155" rx="8" fill="#1a1d27" stroke="#25d366" stroke-width="1.5" stroke-dasharray="4,2"/>
+        <rect width="180" height="28" rx="8" fill="#1a3a28"/>
+        <rect y="20" width="180" height="8" fill="#1a3a28"/>
+        <text x="90" y="20" text-anchor="middle" fill="#25d366" font-weight="700" font-size="12">whatsapp_messages</text>
+        <text x="10" y="46" fill="#4f8ef7">🔑</text><text x="26" y="46" fill="#e2e8f0">id (UUID PK)</text>
+        <text x="10" y="66" fill="#e2e8f0">  patient_id (FK → patients)</text>
+        <text x="10" y="86" fill="#e2e8f0">  appointment_id (FK, nullable)</text>
+        <text x="10" y="106" fill="#8892a4">  message_type (VARCHAR 50)</text>
+        <text x="10" y="126" fill="#8892a4">  status (VARCHAR 20)</text>
+        <text x="10" y="146" fill="#8892a4">  details (JSONB)</text>
+      </g>
+
+      <!-- ── Relationship lines ── -->
+      <!-- users → patients (created_by) -->
+      <line x1="170" y1="80" x2="220" y2="80" stroke="#4f8ef7" stroke-width="1" stroke-dasharray="3,2" opacity="0.5"/>
+      <!-- patients → appointments -->
+      <line x1="420" y1="100" x2="470" y2="100" stroke="#3ecf8e" stroke-width="1.5" opacity="0.6"/>
+      <text x="435" y="94" fill="#3ecf8e" font-size="10">1</text><text x="455" y="94" fill="#3ecf8e" font-size="10">N</text>
+      <!-- patients → visits -->
+      <line x1="320" y1="275" x2="320" y2="320" stroke="#3ecf8e" stroke-width="1.5" opacity="0.6"/>
+      <text x="325" y="310" fill="#3ecf8e" font-size="10">N</text>
+      <!-- appointments → visits -->
+      <line x1="567" y1="235" x2="420" y2="370" stroke="#f5a623" stroke-width="1" stroke-dasharray="4,2" opacity="0.6"/>
+      <!-- visits → visit_treatments -->
+      <line x1="220" y1="420" x2="195" y2="420" stroke="#38bdf8" stroke-width="1.5" opacity="0.6"/>
+      <!-- visits → visit_medications -->
+      <line x1="220" y1="450" x2="130" y2="570" stroke="#38bdf8" stroke-width="1.5" opacity="0.6"/>
+      <!-- visit_treatments → treatment_masters -->
+      <line x1="195" y1="420" x2="195" y2="395" stroke="#38bdf8" stroke-width="1" stroke-dasharray="3,2" opacity="0.4"/>
+      <!-- visits → visit_photos -->
+      <line x1="420" y1="380" x2="700" y2="380" stroke="#8892a4" stroke-width="1" stroke-dasharray="3,2" opacity="0.4"/>
+      <!-- visits → prescriptions -->
+      <line x1="420" y1="430" x2="700" y2="600" stroke="#8892a4" stroke-width="1" stroke-dasharray="3,2" opacity="0.4"/>
+    </svg>
+    <p class="diagram-caption">Figure 2 — Full Entity Relationship Diagram. Green boxes = core clinical entities. Blue = junction/pivot tables. Grey dashed = audit/log tables. Soft-delete on patients (is_deleted flag).</p>
+  </div>
+</div>
+
+<!-- ═══════════ 4. AUTH FLOW ═══════════ -->
+<div class="section">
+  <div class="section-title">4. Authentication & Authorization Flow</div>
+  <div class="section-subtitle">PIN-based login, dual JWT tokens (access + refresh), role-based guards</div>
+
+  <div class="diagram-wrap">
+    <svg viewBox="0 0 900 300" xmlns="http://www.w3.org/2000/svg" font-family="'Segoe UI',system-ui,sans-serif" font-size="11">
+      <defs>
+        <marker id="a2" markerWidth="7" markerHeight="5" refX="7" refY="2.5" orient="auto">
+          <polygon points="0 0, 7 2.5, 0 5" fill="#3ecf8e"/>
+        </marker>
+        <marker id="a3" markerWidth="7" markerHeight="5" refX="7" refY="2.5" orient="auto">
+          <polygon points="0 0, 7 2.5, 0 5" fill="#e05252"/>
+        </marker>
+      </defs>
+
+      <!-- Step boxes -->
+      <rect x="10" y="100" width="130" height="70" rx="8" fill="#1a1d27" stroke="#4f8ef7" stroke-width="1.5"/>
+      <text x="75" y="128" text-anchor="middle" fill="#4f8ef7" font-weight="600">Flutter App</text>
+      <text x="75" y="148" text-anchor="middle" fill="#8892a4">POST /auth/login</text>
+      <text x="75" y="163" text-anchor="middle" fill="#8892a4">{user_id, pin}</text>
+
+      <line x1="140" y1="135" x2="200" y2="135" stroke="#3ecf8e" stroke-width="1.5" marker-end="url(#a2)"/>
+
+      <rect x="200" y="80" width="145" height="110" rx="8" fill="#1a1d27" stroke="#3ecf8e" stroke-width="1.5"/>
+      <text x="272" y="106" text-anchor="middle" fill="#3ecf8e" font-weight="600">AuthService</text>
+      <text x="272" y="126" text-anchor="middle" fill="#8892a4">db.get(User, id)</text>
+      <text x="272" y="146" text-anchor="middle" fill="#8892a4">verify_pin()</text>
+      <text x="272" y="163" text-anchor="middle" fill="#8892a4">bcrypt hash check</text>
+      <text x="272" y="180" text-anchor="middle" fill="#8892a4">update last_login_at</text>
+
+      <line x1="345" y1="135" x2="405" y2="135" stroke="#3ecf8e" stroke-width="1.5" marker-end="url(#a2)"/>
+
+      <rect x="405" y="80" width="155" height="110" rx="8" fill="#1a1d27" stroke="#f5a623" stroke-width="1.5"/>
+      <text x="482" y="106" text-anchor="middle" fill="#f5a623" font-weight="600">Token Minting</text>
+      <text x="482" y="126" text-anchor="middle" fill="#8892a4">access_token (60 min)</text>
+      <text x="482" y="146" text-anchor="middle" fill="#8892a4">refresh_token (7 days)</text>
+      <text x="482" y="163" text-anchor="middle" fill="#8892a4">HS256 + JWT_SECRET</text>
+      <text x="482" y="180" text-anchor="middle" fill="#8892a4">payload: sub, role, name</text>
+
+      <line x1="560" y1="135" x2="620" y2="135" stroke="#3ecf8e" stroke-width="1.5" marker-end="url(#a2)"/>
+
+      <rect x="620" y="80" width="145" height="110" rx="8" fill="#1a1d27" stroke="#7c5cbf" stroke-width="1.5"/>
+      <text x="692" y="106" text-anchor="middle" fill="#7c5cbf" font-weight="600">Subsequent Calls</text>
+      <text x="692" y="126" text-anchor="middle" fill="#8892a4">Authorization: Bearer</text>
+      <text x="692" y="146" text-anchor="middle" fill="#8892a4">get_current_user()</text>
+      <text x="692" y="163" text-anchor="middle" fill="#8892a4">decode_token()</text>
+      <text x="692" y="180" text-anchor="middle" fill="#8892a4">require_role guard</text>
+
+      <!-- Refresh path -->
+      <path d="M 560 175 Q 530 240 345 240 Q 200 240 200 190" stroke="#f5a623" stroke-width="1" stroke-dasharray="5,3" fill="none" marker-end="url(#a2)"/>
+      <rect x="310" y="250" width="180" height="28" rx="6" fill="#1a1d27" stroke="#f5a623" stroke-width="1" stroke-dasharray="3,2"/>
+      <text x="400" y="269" text-anchor="middle" fill="#f5a623" font-size="11">POST /auth/refresh (7-day token)</text>
+
+      <!-- Roles legend -->
+      <rect x="790" y="80" width="100" height="90" rx="8" fill="#13162a" stroke="#2e3350"/>
+      <text x="840" y="100" text-anchor="middle" fill="#8892a4" font-size="10" font-weight="600">ROLES</text>
+      <rect x="800" y="110" width="80" height="20" rx="4" fill="#4f8ef7" opacity="0.2"/>
+      <text x="840" y="124" text-anchor="middle" fill="#4f8ef7" font-size="11">admin</text>
+      <rect x="800" y="136" width="80" height="20" rx="4" fill="#3ecf8e" opacity="0.2"/>
+      <text x="840" y="150" text-anchor="middle" fill="#3ecf8e" font-size="11">staff</text>
+      <text x="840" y="168" text-anchor="middle" fill="#8892a4" font-size="10">require_admin</text>
+
+      <!-- Idle note -->
+      <rect x="10" y="220" width="145" height="40" rx="6" fill="#13162a" stroke="#2e3350"/>
+      <text x="82" y="237" text-anchor="middle" fill="#8892a4" font-size="10">Flutter idle timer</text>
+      <text x="82" y="252" text-anchor="middle" fill="#8892a4" font-size="10">auto-logout at 10 min</text>
+    </svg>
+    <p class="diagram-caption">Figure 3 — Authentication flow. Login validates PIN via bcrypt. Two JWT tokens minted. Refresh path uses the 7-day refresh token. Idle auto-logout enforced on Flutter side.</p>
+  </div>
+</div>
+
+<!-- ═══════════ 5. FILE STORAGE ═══════════ -->
+<div class="section">
+  <div class="section-title">5. File Storage Strategy</div>
+  <div class="section-subtitle">Dual-backend abstracted by S3Service — switchable via FILE_STORAGE_BACKEND env var</div>
+
+  <div class="two-col">
+    <div class="card" style="border-color:var(--orange);">
+      <h3 style="color:var(--orange);font-size:14px;margin-bottom:14px;">📦 Local File System Mode</h3>
+      <ul style="font-size:13px;color:var(--muted);line-height:2;">
+        <li>Files written to <code>data/storage/</code></li>
+        <li>FastAPI serves via <code>StaticFiles</code> mount</li>
+        <li>URL: <code>/api/v1/assets/{key}</code></li>
+        <li>Path traversal blocked in <code>_local_path_for_key()</code></li>
+        <li>Auto-creates directories on startup</li>
+      </ul>
+    </div>
+    <div class="card" style="border-color:var(--teal);">
+      <h3 style="color:var(--teal);font-size:14px;margin-bottom:14px;">☁️ AWS S3 Mode</h3>
+      <ul style="font-size:13px;color:var(--muted);line-height:2;">
+        <li>boto3 client, region: <code>ap-south-1</code></li>
+        <li>Server-side encryption: AES256</li>
+        <li>Presigned URLs expire in 900 seconds (15 min)</li>
+        <li>Used for visit photos & prescription PDFs</li>
+        <li>Key format: <code>visits/{id}/photos/...</code></li>
+      </ul>
+    </div>
+  </div>
+
+  <div class="diagram-wrap" style="margin-top:16px;">
+    <svg viewBox="0 0 820 180" xmlns="http://www.w3.org/2000/svg" font-family="'Segoe UI',system-ui,sans-serif" font-size="11">
+      <rect x="10" y="60" width="130" height="60" rx="7" fill="#1a1d27" stroke="#4f8ef7" stroke-width="1.5"/>
+      <text x="75" y="86" text-anchor="middle" fill="#4f8ef7" font-weight="600">Photo Upload</text>
+      <text x="75" y="104" text-anchor="middle" fill="#8892a4">Compressed JPEG</text>
+      <text x="75" y="118" text-anchor="middle" fill="#8892a4">multipart/form-data</text>
+
+      <line x1="140" y1="90" x2="200" y2="90" stroke="#4f8ef7" stroke-width="1.5"/>
+
+      <rect x="200" y="50" width="150" height="80" rx="7" fill="#1a1d27" stroke="#3ecf8e" stroke-width="1.5"/>
+      <text x="275" y="80" text-anchor="middle" fill="#3ecf8e" font-weight="600">PhotoService</text>
+      <text x="275" y="98" text-anchor="middle" fill="#8892a4">Validate + Pillow</text>
+      <text x="275" y="114" text-anchor="middle" fill="#8892a4">Generate S3 key</text>
+
+      <line x1="350" y1="90" x2="410" y2="90" stroke="#3ecf8e" stroke-width="1.5"/>
+
+      <rect x="410" y="50" width="130" height="80" rx="7" fill="#1a1d27" stroke="#f5a623" stroke-width="1.5"/>
+      <text x="475" y="80" text-anchor="middle" fill="#f5a623" font-weight="600">S3Service</text>
+      <text x="475" y="98" text-anchor="middle" fill="#8892a4">upload_bytes()</text>
+      <text x="475" y="114" text-anchor="middle" fill="#8892a4">get_presigned_url()</text>
+
+      <!-- Branch -->
+      <line x1="540" y1="70" x2="600" y2="40" stroke="#38bdf8" stroke-width="1.5"/>
+      <rect x="600" y="10" width="200" height="60" rx="7" fill="#1a1d27" stroke="#38bdf8" stroke-width="1.5"/>
+      <text x="700" y="38" text-anchor="middle" fill="#38bdf8" font-weight="600">AWS S3 (production)</text>
+      <text x="700" y="56" text-anchor="middle" fill="#8892a4">AES256 encrypted storage</text>
+
+      <line x1="540" y1="110" x2="600" y2="140" stroke="#f5a623" stroke-width="1.5"/>
+      <rect x="600" y="110" width="200" height="60" rx="7" fill="#1a1d27" stroke="#f5a623" stroke-width="1.5"/>
+      <text x="700" y="138" text-anchor="middle" fill="#f5a623" font-weight="600">Local FS (dev/staging)</text>
+      <text x="700" y="156" text-anchor="middle" fill="#8892a4">Served via StaticFiles</text>
+
+      <!-- PDF note -->
+      <rect x="10" y="140" width="370" height="30" rx="6" fill="#13162a" stroke="#2e3350"/>
+      <text x="195" y="158" text-anchor="middle" fill="#8892a4" font-size="11">PDFService uses WeasyPrint + Jinja2 templates → generates prescription PDF → stored via S3Service</text>
+    </svg>
+    <p class="diagram-caption">Figure 4 — File storage abstraction. Same S3Service interface works for both backends. Only the env var switches the implementation.</p>
+  </div>
+</div>
+
+<!-- ═══════════ 6. SCHEDULER & WHATSAPP ═══════════ -->
+<div class="section">
+  <div class="section-title">6. Background Jobs & WhatsApp Integration</div>
+  <div class="section-subtitle">APScheduler fires every 30 minutes to send WATI WhatsApp reminders for upcoming appointments</div>
+
+  <div class="diagram-wrap">
+    <svg viewBox="0 0 860 200" xmlns="http://www.w3.org/2000/svg" font-family="'Segoe UI',system-ui,sans-serif" font-size="11">
+      <rect x="10" y="70" width="140" height="70" rx="8" fill="#1a1d27" stroke="#3ecf8e" stroke-width="1.5"/>
+      <text x="80" y="98" text-anchor="middle" fill="#3ecf8e" font-weight="600">APScheduler</text>
+      <text x="80" y="115" text-anchor="middle" fill="#8892a4">AsyncIOScheduler</text>
+      <text x="80" y="130" text-anchor="middle" fill="#8892a4">Every 30 min</text>
+
+      <line x1="150" y1="105" x2="210" y2="105" stroke="#3ecf8e" stroke-width="1.5"/>
+
+      <rect x="210" y="50" width="160" height="110" rx="8" fill="#1a1d27" stroke="#f5a623" stroke-width="1.5"/>
+      <text x="290" y="78" text-anchor="middle" fill="#f5a623" font-weight="600">run_reminder_job()</text>
+      <text x="290" y="98" text-anchor="middle" fill="#8892a4">Open AsyncSession</text>
+      <text x="290" y="116" text-anchor="middle" fill="#8892a4">Query appointments</text>
+      <text x="290" y="134" text-anchor="middle" fill="#8892a4">24h &amp; 1h windows</text>
+      <text x="290" y="152" text-anchor="middle" fill="#8892a4">whatsapp_enabled check</text>
+
+      <line x1="370" y1="105" x2="430" y2="105" stroke="#f5a623" stroke-width="1.5"/>
+
+      <rect x="430" y="50" width="160" height="110" rx="8" fill="#1a1d27" stroke="#7c5cbf" stroke-width="1.5"/>
+      <text x="510" y="78" text-anchor="middle" fill="#7c5cbf" font-weight="600">WhatsAppService</text>
+      <text x="510" y="98" text-anchor="middle" fill="#8892a4">send_appointment_reminder()</text>
+      <text x="510" y="116" text-anchor="middle" fill="#8892a4">httpx async POST</text>
+      <text x="510" y="134" text-anchor="middle" fill="#8892a4">WATI API endpoint</text>
+      <text x="510" y="152" text-anchor="middle" fill="#8892a4">log to whatsapp_messages</text>
+
+      <line x1="590" y1="105" x2="650" y2="105" stroke="#7c5cbf" stroke-width="1.5"/>
+
+      <rect x="650" y="70" width="140" height="70" rx="8" fill="#1a1d27" stroke="#25d366" stroke-width="1.5"/>
+      <text x="720" y="98" text-anchor="middle" fill="#25d366" font-weight="600">WATI API</text>
+      <text x="720" y="115" text-anchor="middle" fill="#8892a4">WhatsApp Business</text>
+      <text x="720" y="130" text-anchor="middle" fill="#8892a4">Patient mobile</text>
+
+      <!-- Also prescription -->
+      <rect x="430" y="170" width="360" height="26" rx="6" fill="#13162a" stroke="#2e3350"/>
+      <text x="610" y="187" text-anchor="middle" fill="#8892a4" font-size="11">Also: send_prescription_pdf() — sends PDF URL to patient via WhatsApp after visit</text>
+
+      <text x="80" y="30" text-anchor="middle" fill="#8892a4" font-size="10">Lifespan startup: max_instances=1 prevents overlaps</text>
+    </svg>
+    <p class="diagram-caption">Figure 5 — Background reminder pipeline. APScheduler runs in the FastAPI lifespan context. WhatsApp messages are logged to DB regardless of delivery status.</p>
+  </div>
+</div>
+
+<!-- ═══════════ 7. API REFERENCE TABLE ═══════════ -->
+<div class="section">
+  <div class="section-title">7. API Endpoint Reference</div>
+  <div class="section-subtitle">All routes under prefix <code>/api/v1</code>. Auth guard: Bearer JWT. Role guards noted.</div>
+
+  <div class="card" style="padding:0;overflow:hidden;">
+    <table>
+      <thead>
+        <tr>
+          <th>Method</th><th>Path</th><th>Description</th><th>Auth</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr><td><span class="badge badge-green">GET</span></td><td><code>/auth/users</code></td><td>List active users (for PIN login selector)</td><td>Public</td></tr>
+        <tr><td><span class="badge badge-orange">POST</span></td><td><code>/auth/login</code></td><td>PIN-based login → access + refresh tokens</td><td>Public</td></tr>
+        <tr><td><span class="badge badge-orange">POST</span></td><td><code>/auth/refresh</code></td><td>Refresh access token using refresh token</td><td>Public</td></tr>
+        <tr><td><span class="badge badge-orange">POST</span></td><td><code>/auth/logout</code></td><td>Logout (client clears tokens)</td><td>JWT</td></tr>
+        <tr><td><span class="badge badge-green">GET</span></td><td><code>/patients</code></td><td>Paginated patient list with search</td><td>JWT</td></tr>
+        <tr><td><span class="badge badge-orange">POST</span></td><td><code>/patients</code></td><td>Create patient (auto-generates patient_uid)</td><td>JWT</td></tr>
+        <tr><td><span class="badge badge-green">GET</span></td><td><code>/patients/{id}</code></td><td>Patient detail with visit history</td><td>JWT</td></tr>
+        <tr><td><span class="badge badge-blue">PATCH</span></td><td><code>/patients/{id}</code></td><td>Update patient info</td><td>JWT</td></tr>
+        <tr><td><span class="badge badge-red">DELETE</span></td><td><code>/patients/{id}</code></td><td>Soft-delete with reason</td><td>JWT</td></tr>
+        <tr><td><span class="badge badge-orange">POST</span></td><td><code>/visits</code></td><td>Create visit with treatments, medications</td><td>JWT</td></tr>
+        <tr><td><span class="badge badge-green">GET</span></td><td><code>/visits/{id}</code></td><td>Full visit detail (eager-loaded relations)</td><td>JWT</td></tr>
+        <tr><td><span class="badge badge-blue">PATCH</span></td><td><code>/visits/{id}</code></td><td>Update visit (replaces treatment/medication lists)</td><td>JWT</td></tr>
+        <tr><td><span class="badge badge-orange">POST</span></td><td><code>/visits/{id}/photos</code></td><td>Upload photos (multipart, compressed)</td><td>JWT</td></tr>
+        <tr><td><span class="badge badge-red">DELETE</span></td><td><code>/visits/{id}/photos/{pid}</code></td><td>Delete photo from visit</td><td>JWT</td></tr>
+        <tr><td><span class="badge badge-orange">POST</span></td><td><code>/visits/{id}/prescription</code></td><td>Generate PDF prescription → store → WhatsApp send</td><td>JWT</td></tr>
+        <tr><td><span class="badge badge-green">GET</span></td><td><code>/appointments</code></td><td>List appointments with date filter</td><td>JWT</td></tr>
+        <tr><td><span class="badge badge-orange">POST</span></td><td><code>/appointments</code></td><td>Book appointment</td><td>JWT</td></tr>
+        <tr><td><span class="badge badge-green">GET</span></td><td><code>/dashboard/summary</code></td><td>KPI stats: patients, visits, revenue etc.</td><td>JWT</td></tr>
+        <tr><td><span class="badge badge-green">GET</span></td><td><code>/staff</code></td><td>List staff members</td><td>Admin</td></tr>
+        <tr><td><span class="badge badge-orange">POST</span></td><td><code>/staff</code></td><td>Create staff/admin account</td><td>Admin</td></tr>
+        <tr><td><span class="badge badge-orange">POST</span></td><td><code>/staff/{id}/reset-pin</code></td><td>Reset staff PIN</td><td>Admin</td></tr>
+        <tr><td><span class="badge badge-green">GET</span></td><td><code>/treatments</code> <code>/medications</code></td><td>Master data catalogues</td><td>JWT</td></tr>
+        <tr><td><span class="badge badge-green">GET</span></td><td><code>/inventory</code></td><td>Inventory items (addon feature)</td><td>JWT + flag</td></tr>
+        <tr><td><span class="badge badge-green">GET</span></td><td><code>/health</code></td><td>DB connectivity health check</td><td>Public</td></tr>
+      </tbody>
+    </table>
+  </div>
+</div>
+
+<!-- ═══════════ 8. KEY DESIGN DECISIONS ═══════════ -->
+<div class="section">
+  <div class="section-title">8. Key Architectural Decisions</div>
+  <div class="section-subtitle">Design choices that define the shape and maintainability of the system</div>
+
+  <div class="card-grid">
+    <div class="layer-card" style="background:var(--surface);border-color:var(--accent);">
+      <h3 style="color:var(--accent);">Async-First</h3>
+      <ul>
+        <li>asyncpg driver for PostgreSQL</li>
+        <li>SQLAlchemy 2.0 async sessions</li>
+        <li>httpx async client for WATI</li>
+        <li>No blocking I/O in hot paths</li>
+      </ul>
+    </div>
+    <div class="layer-card" style="background:var(--surface);border-color:var(--green);">
+      <h3 style="color:var(--green);">Pydantic v2 Schemas</h3>
+      <ul>
+        <li>Input validation fully declarative</li>
+        <li>Schemas separate from ORM models</li>
+        <li>response_model drives serialisation</li>
+        <li>Strict field validators on Settings</li>
+      </ul>
+    </div>
+    <div class="layer-card" style="background:var(--surface);border-color:var(--orange);">
+      <h3 style="color:var(--orange);">Soft Delete Pattern</h3>
+      <ul>
+        <li>Patients never hard-deleted</li>
+        <li>is_deleted + deleted_at + reason</li>
+        <li>All queries filter is_deleted=False</li>
+        <li>Audit trail preserved in activity_logs</li>
+      </ul>
+    </div>
+    <div class="layer-card" style="background:var(--surface);border-color:var(--teal);">
+      <h3 style="color:var(--teal);">Inventory as Addon</h3>
+      <ul>
+        <li>INVENTORY_ADDON_ENABLED env flag</li>
+        <li>Router dynamically included at startup</li>
+        <li>Feature isolation without separate service</li>
+      </ul>
+    </div>
+    <div class="layer-card" style="background:var(--surface);border-color:var(--accent2);">
+      <h3 style="color:var(--accent2);">Selectinload Strategy</h3>
+      <ul>
+        <li>Explicit eager loading via selectinload()</li>
+        <li>Avoids N+1 query problem</li>
+        <li>Relations loaded in separate SELECT</li>
+        <li>Consistent response shape for Flutter</li>
+      </ul>
+    </div>
+    <div class="layer-card" style="background:var(--surface);border-color:var(--red);">
+      <h3 style="color:var(--red);">Standardised Errors</h3>
+      <ul>
+        <li>All errors: {error_code, message, details}</li>
+        <li>Centralised exception handlers in main.py</li>
+        <li>Custom error codes (VALIDATION_ERROR etc.)</li>
+        <li>Flutter maps them to AppError objects</li>
+      </ul>
+    </div>
+  </div>
+</div>
+
+</div><!-- /container -->
+
+<footer>
+  Dental Clinic — Backend Architecture Document &nbsp;|&nbsp; FastAPI + PostgreSQL + SQLAlchemy + AWS S3 + WATI &nbsp;|&nbsp; Generated April 2026
+</footer>
+</body>
+</html>
