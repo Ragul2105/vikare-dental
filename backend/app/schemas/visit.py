@@ -30,6 +30,9 @@ class VisitCreate(BaseModel):
     diagnosis: str | None = None
     treatment_ids: list[uuid.UUID] = Field(default_factory=list)
     medication_items: list[VisitMedicationItem] = Field(default_factory=list)
+    follow_up_required: bool = False
+    follow_up_date: date | None = None
+    follow_up_notes: str | None = None
 
 
 class VisitUpdate(BaseModel):
@@ -37,6 +40,9 @@ class VisitUpdate(BaseModel):
     diagnosis: str | None = None
     treatment_ids: list[uuid.UUID] | None = None
     medication_items: list[VisitMedicationItem] | None = None
+    follow_up_required: bool | None = None
+    follow_up_date: date | None = None
+    follow_up_notes: str | None = None
 
 
 class VisitTreatmentResponse(BaseModel):
@@ -63,10 +69,12 @@ class VisitResponse(BaseModel):
     visit_date: date
     notes: str | None
     diagnosis: str | None
+    follow_up_required: bool
+    follow_up_date: date | None
+    follow_up_notes: str | None
     photos: list[VisitPhotoResponse] = Field(default_factory=list)
     treatments: list[VisitTreatmentResponse] = Field(default_factory=list)
     medications: list[VisitMedicationResponse] = Field(default_factory=list)
     created_by: uuid.UUID
     created_at: datetime
     updated_at: datetime
-

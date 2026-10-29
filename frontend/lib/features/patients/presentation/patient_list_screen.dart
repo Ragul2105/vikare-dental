@@ -9,13 +9,12 @@ import '../../../core/cache/hive_cache.dart';
 import '../../../core/models/pagination.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_spacing.dart';
+import '../../../core/utils/date_formatter.dart';
 import '../../../core/utils/debouncer.dart';
-import '../../../core/widgets/app_card.dart';
 import '../../../core/widgets/app_empty_state.dart';
 import '../../../core/widgets/app_error_view.dart';
 import '../../../core/widgets/app_loading.dart';
 import '../../../core/widgets/app_scaffold.dart';
-import '../../../core/widgets/app_text_field.dart';
 import '../data/patient_repository.dart';
 import '../domain/patient_models.dart';
 
@@ -28,7 +27,6 @@ final patientListProvider = FutureProvider<PaginatedResponse<Patient>>((
   const cacheKey = 'patient_list_page_1';
   final search = ref.watch(patientSearchProvider);
   final page = ref.watch(patientPageProvider);
-
   try {
     final result = await ref
         .read(patientRepositoryProvider)
@@ -46,14 +44,12 @@ final patientListProvider = FutureProvider<PaginatedResponse<Patient>>((
       error: (error) => throw error,
     );
   } catch (_) {
-    if (search.isEmpty && page == 1) {
-      final cached = HiveCache.getString(cacheKey);
-      if (cached != null) {
-        return PaginatedResponse<Patient>.fromJson(
-          jsonDecode(cached) as Map<String, dynamic>,
-          Patient.fromJson,
-        );
-      }
+    final cached = HiveCache.getString(cacheKey);
+    if (search.isEmpty && page == 1 && cached != null) {
+      return PaginatedResponse<Patient>.fromJson(
+        jsonDecode(cached) as Map<String, dynamic>,
+        Patient.fromJson,
+      );
     }
     rethrow;
   }
@@ -79,9 +75,8 @@ class _PatientListScreenState extends ConsumerState<PatientListScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final patientsState = ref.watch(patientListProvider);
+    final state = ref.watch(patientListProvider);
     final page = ref.watch(patientPageProvider);
-
     return AppScaffold(
       currentIndex: 1,
       floatingActionButton: FloatingActionButton.extended(
@@ -89,60 +84,49 @@ class _PatientListScreenState extends ConsumerState<PatientListScreen> {
         icon: const Icon(Icons.person_add_alt_1_rounded),
         label: const Text('New Patient'),
       ),
-      body: SafeArea(
+      body: Padding(
+        padding: const EdgeInsets.all(AppSpacing.pagePadding),
         child: Column(
           children: [
-            Padding(
-              padding: const EdgeInsets.fromLTRB(
-                AppSpacing.pagePadding,
-                AppSpacing.pagePadding,
-                AppSpacing.pagePadding,
-                AppSpacing.md,
-              ),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    'Patients',
-                    style: Theme.of(context).textTheme.displayMedium,
-                  ),
-                  const SizedBox(height: AppSpacing.xs),
-                  Text(
-                    'Search by patient name, UID, or mobile number.',
-                    style: Theme.of(context).textTheme.bodyLarge,
-                  ),
-                  const SizedBox(height: AppSpacing.md),
-                  AppTextField(
+            Row(
+              children: [
+                Text(
+                  'Patient Records',
+                  style: Theme.of(context).textTheme.displayMedium,
+                ),
+                const Spacer(),
+                SizedBox(
+                  width: 260,
+                  height: 42,
+                  child: TextField(
                     controller: _searchController,
-                    hint: 'Search patients...',
-                    prefixIcon: const Icon(Icons.search_rounded),
-                    onChanged: (value) {
-                      _debouncer.run(() {
-                        ref.read(patientSearchProvider.notifier).state = value
-                            .trim();
-                        ref.read(patientPageProvider.notifier).state = 1;
-                      });
-                    },
-                    suffixIcon: _searchController.text.isEmpty
-                        ? null
-                        : IconButton(
-                            onPressed: () {
-                              _searchController.clear();
-                              ref.read(patientSearchProvider.notifier).state =
-                                  '';
-                              ref.read(patientPageProvider.notifier).state = 1;
-                              setState(() {});
-                            },
-                            icon: const Icon(Icons.close_rounded),
-                          ),
+                    onChanged: (value) => _debouncer.run(() {
+                      ref.read(patientSearchProvider.notifier).state = value
+                          .trim();
+                      ref.read(patientPageProvider.notifier).state = 1;
+                    }),
+                    decoration: const InputDecoration(
+                      hintText: 'Search...',
+                      prefixIcon: Icon(Icons.search_rounded),
+                      contentPadding: EdgeInsets.zero,
+                    ),
                   ),
-                ],
-              ),
+                ),
+                const SizedBox(width: 22),
+                FilledButton.icon(
+                  onPressed: () => context.push('/patients/new'),
+                  icon: const Icon(Icons.person_add_alt_1_rounded),
+                  label: const Text('New Patient'),
+                ),
+              ],
             ),
+            const SizedBox(height: 22),
+            const _PatientTableHeader(),
+            const SizedBox(height: 10),
             Expanded(
               child: RefreshIndicator(
-                onRefresh: () async => ref.invalidate(patientListProvider),
-                child: patientsState.when(
+                onRefresh: () => ref.refresh(patientListProvider.future),
+                child: state.when(
                   loading: () => const AppLoadingList(),
                   error: (error, _) => AppErrorView(
                     message: error is AppError
@@ -157,105 +141,150 @@ class _PatientListScreenState extends ConsumerState<PatientListScreen> {
                         message: 'No patients found.',
                       );
                     }
-
                     return ListView.separated(
-                      padding: const EdgeInsets.fromLTRB(
-                        AppSpacing.pagePadding,
-                        0,
-                        AppSpacing.pagePadding,
-                        AppSpacing.xxl,
+                      itemCount: response.items.length,
+                      separatorBuilder: (_, _) => const SizedBox(height: 10),
+                      itemBuilder: (context, index) => _PatientRow(
+                        patient: response.items[index],
+                        onTap: () => context.push(
+                          '/patients/${response.items[index].id}',
+                        ),
                       ),
-                      itemCount: response.items.length + 1,
-                      separatorBuilder: (context, index) =>
-                          const SizedBox(height: AppSpacing.md),
-                      itemBuilder: (context, index) {
-                        if (index == response.items.length) {
-                          return _PaginationRow(
-                            currentPage: page,
-                            totalPages: response.totalPages,
-                            onPrevious: response.hasPreviousPage
-                                ? () =>
-                                      ref
-                                              .read(
-                                                patientPageProvider.notifier,
-                                              )
-                                              .state =
-                                          page - 1
-                                : null,
-                            onNext: response.hasNextPage
-                                ? () =>
-                                      ref
-                                              .read(
-                                                patientPageProvider.notifier,
-                                              )
-                                              .state =
-                                          page + 1
-                                : null,
-                          );
-                        }
-
-                        final patient = response.items[index];
-                        return AppCard(
-                          onTap: () => context.push('/patients/${patient.id}'),
-                          child: Row(
-                            children: [
-                              CircleAvatar(
-                                radius: 26,
-                                backgroundColor: AppColors.surfaceAccent,
-                                foregroundColor: AppColors.accentDeep,
-                                child: Text(
-                                  patient.name.isEmpty
-                                      ? '?'
-                                      : patient.name.characters.first
-                                            .toUpperCase(),
-                                ),
-                              ),
-                              const SizedBox(width: AppSpacing.md),
-                              Expanded(
-                                child: Column(
-                                  crossAxisAlignment: CrossAxisAlignment.start,
-                                  children: [
-                                    Text(
-                                      patient.name,
-                                      style: Theme.of(
-                                        context,
-                                      ).textTheme.titleMedium,
-                                    ),
-                                    const SizedBox(height: AppSpacing.xs),
-                                    Text(
-                                      '${patient.patientUid}  •  ${patient.mobile}',
-                                      style: Theme.of(
-                                        context,
-                                      ).textTheme.bodyMedium,
-                                    ),
-                                    if (patient.gender != null ||
-                                        patient.age != null) ...[
-                                      const SizedBox(height: AppSpacing.xs),
-                                      Text(
-                                        [
-                                          patient.gender,
-                                          if (patient.age != null)
-                                            '${patient.age} yrs',
-                                        ].whereType<String>().join(' • '),
-                                        style: Theme.of(
-                                          context,
-                                        ).textTheme.bodyMedium,
-                                      ),
-                                    ],
-                                  ],
-                                ),
-                              ),
-                              const Icon(Icons.chevron_right_rounded),
-                            ],
-                          ),
-                        );
-                      },
                     );
                   },
                 ),
               ),
             ),
+            state.when(
+              loading: () => const SizedBox.shrink(),
+              error: (_, _) => const SizedBox.shrink(),
+              data: (response) => _PaginationRow(
+                currentPage: page,
+                totalPages: response.totalPages,
+                total: response.total,
+                visibleCount: response.items.length,
+                onPrevious: response.hasPreviousPage
+                    ? () => ref.read(patientPageProvider.notifier).state =
+                          page - 1
+                    : null,
+                onNext: response.hasNextPage
+                    ? () => ref.read(patientPageProvider.notifier).state =
+                          page + 1
+                    : null,
+              ),
+            ),
           ],
+        ),
+      ),
+    );
+  }
+}
+
+class _PatientTableHeader extends StatelessWidget {
+  const _PatientTableHeader();
+  @override
+  Widget build(BuildContext context) => const Padding(
+    padding: EdgeInsets.symmetric(horizontal: 20),
+    child: Row(
+      children: [
+        Expanded(flex: 2, child: Text('PATIENT ID')),
+        Expanded(flex: 3, child: Text('PATIENT NAME')),
+        Expanded(flex: 3, child: Text('DOCTOR NAME')),
+        Expanded(flex: 2, child: Text('LAST VISIT DATE')),
+      ],
+    ),
+  );
+}
+
+class _PatientRow extends StatelessWidget {
+  const _PatientRow({required this.patient, required this.onTap});
+  final Patient patient;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    return Material(
+      color: Colors.white,
+      borderRadius: BorderRadius.circular(AppSpacing.radiusMd),
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(AppSpacing.radiusMd),
+        child: Container(
+          height: 68,
+          padding: const EdgeInsets.symmetric(horizontal: 20),
+          decoration: BoxDecoration(
+            border: Border.all(color: const Color(0xFFEDF1F6)),
+            borderRadius: BorderRadius.circular(AppSpacing.radiusMd),
+            boxShadow: const [
+              BoxShadow(
+                color: Color(0x0A153047),
+                blurRadius: 4,
+                offset: Offset(0, 2),
+              ),
+            ],
+          ),
+          child: Row(
+            children: [
+              Expanded(
+                flex: 2,
+                child: Align(
+                  alignment: Alignment.centerLeft,
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 12,
+                      vertical: 7,
+                    ),
+                    decoration: BoxDecoration(
+                      color: const Color(0xFFEDF4FF),
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                    child: Text(
+                      patient.patientUid,
+                      style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                        color: AppColors.accentDeep,
+                        fontFamily: 'monospace',
+                      ),
+                    ),
+                  ),
+                ),
+              ),
+              Expanded(
+                flex: 3,
+                child: Column(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      patient.name,
+                      style: Theme.of(context).textTheme.labelLarge,
+                    ),
+                    Text(
+                      [
+                        patient.gender,
+                        if (patient.age != null) '${patient.age} yrs',
+                      ].whereType<String>().join(' • '),
+                      style: Theme.of(context).textTheme.bodyMedium,
+                    ),
+                  ],
+                ),
+              ),
+              Expanded(
+                flex: 3,
+                child: Text(
+                  patient.doctorName ?? '—',
+                  style: Theme.of(context).textTheme.labelLarge,
+                ),
+              ),
+              Expanded(
+                flex: 2,
+                child: Text(
+                  patient.lastVisitDate == null
+                      ? 'No visits yet'
+                      : DateFormatter.shortDate(patient.lastVisitDate!),
+                ),
+              ),
+            ],
+          ),
         ),
       ),
     );
@@ -266,71 +295,34 @@ class _PaginationRow extends StatelessWidget {
   const _PaginationRow({
     required this.currentPage,
     required this.totalPages,
+    required this.total,
+    required this.visibleCount,
     this.onPrevious,
     this.onNext,
   });
-
   final int currentPage;
   final int totalPages;
+  final int total;
+  final int visibleCount;
   final VoidCallback? onPrevious;
   final VoidCallback? onNext;
 
   @override
-  Widget build(BuildContext context) {
-    return LayoutBuilder(
-      builder: (context, constraints) {
-        final stack = constraints.maxWidth < 380;
-
-        if (stack) {
-          return Column(
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              Text(
-                'Page $currentPage of $totalPages',
-                textAlign: TextAlign.center,
-              ),
-              const SizedBox(height: AppSpacing.sm),
-              Row(
-                children: [
-                  Expanded(
-                    child: OutlinedButton.icon(
-                      onPressed: onPrevious,
-                      icon: const Icon(Icons.chevron_left_rounded),
-                      label: const Text('Previous'),
-                    ),
-                  ),
-                  const SizedBox(width: AppSpacing.sm),
-                  Expanded(
-                    child: FilledButton.icon(
-                      onPressed: onNext,
-                      icon: const Icon(Icons.chevron_right_rounded),
-                      label: const Text('Next'),
-                    ),
-                  ),
-                ],
-              ),
-            ],
-          );
-        }
-
-        return Row(
-          children: [
-            OutlinedButton.icon(
-              onPressed: onPrevious,
-              icon: const Icon(Icons.chevron_left_rounded),
-              label: const Text('Previous'),
-            ),
-            const Spacer(),
-            Text('Page $currentPage of $totalPages'),
-            const Spacer(),
-            FilledButton.icon(
-              onPressed: onNext,
-              icon: const Icon(Icons.chevron_right_rounded),
-              label: const Text('Next'),
-            ),
-          ],
-        );
-      },
-    );
-  }
+  Widget build(BuildContext context) => Container(
+    padding: const EdgeInsets.only(top: 16),
+    decoration: const BoxDecoration(
+      border: Border(top: BorderSide(color: AppColors.border)),
+    ),
+    child: Row(
+      children: [
+        Text('$visibleCount of $total patients'),
+        const Spacer(),
+        OutlinedButton(onPressed: onPrevious, child: const Text('Prev')),
+        const SizedBox(width: 10),
+        Text('$currentPage / ${totalPages == 0 ? 1 : totalPages}'),
+        const SizedBox(width: 10),
+        OutlinedButton(onPressed: onNext, child: const Text('Next')),
+      ],
+    ),
+  );
 }

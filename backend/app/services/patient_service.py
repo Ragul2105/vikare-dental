@@ -12,6 +12,7 @@ from app.models.patient import Patient
 from app.models.visit import Visit
 from app.models.visit_medication import VisitMedication
 from app.models.visit_treatment import VisitTreatment
+from app.models.user import User
 from app.schemas.patient import PatientCreate, PatientUpdate
 from app.utils.pagination import calculate_offset
 from app.utils.uid import generate_patient_uid
@@ -47,15 +48,20 @@ class PatientService:
             .offset(calculate_offset(page, page_size))
             .limit(page_size)
         )
+        patients = result.scalars().all()
+        await self._attach_latest_visit_metadata(patients)
+
         return {
-            "items": result.scalars().all(),
+            "items": patients,
             "total": total,
             "page": page,
             "page_size": page_size,
         }
 
     async def get_patient(self, patient_id: uuid.UUID) -> Patient:
-        return await self._get_or_404(patient_id)
+        patient = await self._get_or_404(patient_id)
+        await self._attach_latest_visit_metadata([patient])
+        return patient
 
     async def update_patient(self, patient_id: uuid.UUID, data: PatientUpdate) -> Patient:
         patient = await self._get_or_404(patient_id)
@@ -97,3 +103,21 @@ class PatientService:
             raise HTTPException(status_code=404, detail="Patient not found")
         return patient
 
+    async def _attach_latest_visit_metadata(self, patients: list[Patient]) -> None:
+        if not patients:
+            return
+        visit_rows = (
+            await self.db.execute(
+                select(Visit.patient_id, Visit.visit_date, User.name)
+                .join(User, User.id == Visit.created_by)
+                .where(Visit.patient_id.in_([patient.id for patient in patients]))
+                .order_by(Visit.patient_id, Visit.visit_date.desc(), Visit.created_at.desc())
+            )
+        ).all()
+        latest_by_patient: dict[uuid.UUID, tuple] = {}
+        for patient_id, visit_date, doctor_name in visit_rows:
+            latest_by_patient.setdefault(patient_id, (visit_date, doctor_name))
+        for patient in patients:
+            latest = latest_by_patient.get(patient.id)
+            patient.last_visit_date = latest[0] if latest else None
+            patient.doctor_name = latest[1] if latest else None

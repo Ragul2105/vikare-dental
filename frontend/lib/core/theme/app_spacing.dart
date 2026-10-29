@@ -8,11 +8,11 @@ class AppSpacing {
   static const double xl = 32;
   static const double xxl = 48;
 
-  static const double radiusSm = 10;
-  static const double radiusMd = 16;
-  static const double radiusLg = 22;
-  static const double radiusXl = 28;
+  static const double radiusSm = 6;
+  static const double radiusMd = 10;
+  static const double radiusLg = 14;
+  static const double radiusXl = 20;
 
-  static const double pagePadding = 20;
+  static const double pagePadding = 32;
   static const double cardPadding = 18;
 }

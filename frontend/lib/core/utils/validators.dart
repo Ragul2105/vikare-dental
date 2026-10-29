@@ -22,10 +22,10 @@ class Validators {
 
   static String? pin(String? value) {
     final trimmed = value?.trim() ?? '';
-    if (trimmed.length < 4 || trimmed.length > 8) {
-      return 'PIN must be 4 to 8 digits';
+    if (trimmed.length != 4) {
+      return 'PIN must be exactly 4 digits';
     }
-    if (!RegExp(r'^\d{4,8}$').hasMatch(trimmed)) {
+    if (!RegExp(r'^\d{4}$').hasMatch(trimmed)) {
       return 'PIN must contain digits only';
     }
     return null;

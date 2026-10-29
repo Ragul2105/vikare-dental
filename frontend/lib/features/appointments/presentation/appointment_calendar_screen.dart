@@ -11,7 +11,6 @@ import '../../../core/utils/india_time.dart';
 import '../../../core/widgets/app_badge.dart';
 import '../../../core/widgets/app_bottom_sheet.dart';
 import '../../../core/widgets/app_card.dart';
-import '../../../core/widgets/app_empty_state.dart';
 import '../../../core/widgets/app_error_view.dart';
 import '../../../core/widgets/app_loading.dart';
 import '../../../core/widgets/app_scaffold.dart';
@@ -66,106 +65,195 @@ class _AppointmentCalendarScreenState
         icon: const Icon(Icons.add_rounded),
         label: const Text('New Appointment'),
       ),
-      body: SafeArea(
+      body: Padding(
+        padding: const EdgeInsets.all(AppSpacing.pagePadding),
         child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Padding(
-              padding: const EdgeInsets.all(AppSpacing.pagePadding),
-              child: AppCard(
-                child: TableCalendar<dynamic>(
-                  firstDay: DateTime(2020),
-                  lastDay: DateTime(2035),
-                  focusedDay: _focusedDay,
-                  selectedDayPredicate: (day) => isSameDay(day, _selectedDay),
-                  calendarFormat: CalendarFormat.week,
-                  onDaySelected: (selectedDay, focusedDay) {
-                    setState(() {
-                      _selectedDay = IndiaTime.dateOnly(selectedDay);
-                      _focusedDay = IndiaTime.dateOnly(focusedDay);
-                    });
-                  },
-                  onPageChanged: (focusedDay) => setState(
-                    () => _focusedDay = IndiaTime.dateOnly(focusedDay),
-                  ),
-                  headerStyle: HeaderStyle(
-                    titleTextStyle: Theme.of(context).textTheme.titleLarge!,
-                    formatButtonVisible: false,
-                    leftChevronIcon: const Icon(Icons.chevron_left_rounded),
-                    rightChevronIcon: const Icon(Icons.chevron_right_rounded),
-                  ),
-                  calendarStyle: CalendarStyle(
-                    defaultTextStyle: Theme.of(context).textTheme.bodyMedium!,
-                    selectedDecoration: const BoxDecoration(
-                      color: AppColors.accent,
-                      shape: BoxShape.circle,
-                    ),
-                    todayDecoration: BoxDecoration(
-                      color: AppColors.surfaceAccent,
-                      shape: BoxShape.circle,
-                      border: Border.all(color: AppColors.accent),
-                    ),
-                  ),
+            Row(
+              children: [
+                Text(
+                  'Appointments',
+                  style: Theme.of(context).textTheme.displayMedium,
                 ),
-              ),
-            ),
-            Padding(
-              padding: const EdgeInsets.symmetric(
-                horizontal: AppSpacing.pagePadding,
-              ),
-              child: Row(
-                children: [
-                  Expanded(
-                    child: Text(
-                      'Appointments for ${DateFormatter.shortDate(_selectedDay)}',
-                      style: Theme.of(context).textTheme.titleLarge,
-                    ),
+                const SizedBox(width: 20),
+                Container(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 14,
+                    vertical: 8,
                   ),
-                ],
-              ),
+                  decoration: BoxDecoration(
+                    color: AppColors.surfaceAccent,
+                    border: Border.all(color: AppColors.border),
+                    borderRadius: BorderRadius.circular(20),
+                  ),
+                  child: const Text('Monthly'),
+                ),
+              ],
             ),
-            const SizedBox(height: AppSpacing.md),
+            const SizedBox(height: 22),
             Expanded(
-              child: RefreshIndicator(
-                onRefresh: () => ref.refresh(
-                  appointmentsForDayProvider(_selectedDayKey).future,
-                ),
-                child: appointmentsState.when(
-                  loading: () => const AppLoadingList(),
-                  error: (error, _) => AppErrorView(
-                    message: error is AppError
-                        ? error.message
-                        : 'Failed to load appointments.',
-                    onRetry: () => ref.invalidate(
-                      appointmentsForDayProvider(_selectedDayKey),
-                    ),
-                  ),
-                  data: (appointments) {
-                    if (appointments.isEmpty) {
-                      return const AppEmptyState(
-                        icon: Icons.event_busy_outlined,
-                        message: 'No appointments on this day.',
-                      );
-                    }
-                    return ListView.separated(
-                      padding: const EdgeInsets.fromLTRB(
-                        AppSpacing.pagePadding,
-                        0,
-                        AppSpacing.pagePadding,
-                        AppSpacing.xxl,
+              child: LayoutBuilder(
+                builder: (context, constraints) {
+                  final stack = constraints.maxWidth < 920;
+                  final calendar = AppCard(
+                    padding: const EdgeInsets.all(8),
+                    child: TableCalendar<dynamic>(
+                      firstDay: DateTime(2020),
+                      lastDay: DateTime(2035),
+                      focusedDay: _focusedDay,
+                      selectedDayPredicate: (day) =>
+                          isSameDay(day, _selectedDay),
+                      calendarFormat: CalendarFormat.month,
+                      rowHeight: 72,
+                      daysOfWeekHeight: 34,
+                      onDaySelected: (selectedDay, focusedDay) => setState(() {
+                        _selectedDay = IndiaTime.dateOnly(selectedDay);
+                        _focusedDay = IndiaTime.dateOnly(focusedDay);
+                      }),
+                      onPageChanged: (focusedDay) => setState(
+                        () => _focusedDay = IndiaTime.dateOnly(focusedDay),
                       ),
-                      itemCount: appointments.length,
-                      separatorBuilder: (context, index) =>
-                          const SizedBox(height: AppSpacing.md),
-                      itemBuilder: (context, index) {
-                        final appointment = appointments[index];
-                        return _AppointmentTile(
-                          appointment: appointment,
-                          onTap: () => _showDetail(context, appointment),
-                        );
-                      },
+                      headerStyle: HeaderStyle(
+                        titleTextStyle: Theme.of(context).textTheme.titleLarge!,
+                        formatButtonVisible: false,
+                        leftChevronIcon: const Icon(Icons.chevron_left_rounded),
+                        rightChevronIcon: const Icon(
+                          Icons.chevron_right_rounded,
+                        ),
+                      ),
+                      calendarStyle: CalendarStyle(
+                        cellMargin: const EdgeInsets.all(1),
+                        cellPadding: const EdgeInsets.all(6),
+                        cellAlignment: Alignment.topLeft,
+                        defaultTextStyle: Theme.of(
+                          context,
+                        ).textTheme.bodyMedium!,
+                        weekendTextStyle: Theme.of(
+                          context,
+                        ).textTheme.bodyMedium!,
+                        selectedDecoration: BoxDecoration(
+                          color: AppColors.surfaceAccent,
+                          border: Border.all(color: AppColors.accent),
+                        ),
+                        selectedTextStyle: Theme.of(context)
+                            .textTheme
+                            .bodyMedium!
+                            .copyWith(
+                              color: AppColors.info,
+                              fontWeight: FontWeight.w700,
+                            ),
+                        todayDecoration: BoxDecoration(
+                          color: AppColors.surfaceMuted,
+                          border: Border.all(color: AppColors.border),
+                        ),
+                        todayTextStyle: Theme.of(context).textTheme.bodyMedium!
+                            .copyWith(color: AppColors.textPrimary),
+                        outsideTextStyle: Theme.of(context)
+                            .textTheme
+                            .bodyMedium!
+                            .copyWith(color: AppColors.textSoft),
+                      ),
+                    ),
+                  );
+                  final schedule = AppCard(
+                    padding: EdgeInsets.zero,
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Padding(
+                          padding: const EdgeInsets.all(16),
+                          child: Row(
+                            children: [
+                              Expanded(
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Text(
+                                      "Today's Schedule",
+                                      style: Theme.of(
+                                        context,
+                                      ).textTheme.titleLarge,
+                                    ),
+                                    Text(
+                                      DateFormatter.shortDate(_selectedDay),
+                                      style: Theme.of(
+                                        context,
+                                      ).textTheme.bodyMedium,
+                                    ),
+                                  ],
+                                ),
+                              ),
+                              appointmentsState.when(
+                                data: (items) =>
+                                    AppBadge(label: '${items.length} Appts'),
+                                loading: () => const SizedBox.shrink(),
+                                error: (_, _) => const SizedBox.shrink(),
+                              ),
+                            ],
+                          ),
+                        ),
+                        const Divider(),
+                        Expanded(
+                          child: RefreshIndicator(
+                            onRefresh: () => ref.refresh(
+                              appointmentsForDayProvider(
+                                _selectedDayKey,
+                              ).future,
+                            ),
+                            child: appointmentsState.when(
+                              loading: () => const AppLoadingList(),
+                              error: (error, _) => AppErrorView(
+                                message: error is AppError
+                                    ? error.message
+                                    : 'Failed to load appointments.',
+                                onRetry: () => ref.invalidate(
+                                  appointmentsForDayProvider(_selectedDayKey),
+                                ),
+                              ),
+                              data: (appointments) => appointments.isEmpty
+                                  ? const Center(
+                                      child: Text(
+                                        'No appointments on this day.',
+                                      ),
+                                    )
+                                  : ListView.separated(
+                                      padding: const EdgeInsets.all(12),
+                                      itemCount: appointments.length,
+                                      separatorBuilder: (_, _) =>
+                                          const SizedBox(height: 10),
+                                      itemBuilder: (_, index) =>
+                                          _AppointmentTile(
+                                            appointment: appointments[index],
+                                            onTap: () => _showDetail(
+                                              context,
+                                              appointments[index],
+                                            ),
+                                          ),
+                                    ),
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  );
+                  if (stack) {
+                    return Column(
+                      children: [
+                        Expanded(child: calendar),
+                        const SizedBox(height: 14),
+                        SizedBox(height: 300, child: schedule),
+                      ],
                     );
-                  },
-                ),
+                  }
+                  return Row(
+                    children: [
+                      Expanded(flex: 2, child: calendar),
+                      const SizedBox(width: 22),
+                      Expanded(child: schedule),
+                    ],
+                  );
+                },
               ),
             ),
           ],
@@ -234,21 +322,27 @@ class _AppointmentCalendarScreenState
                   ),
                   FilledButton.tonalIcon(
                     onPressed: () =>
-                        _changeStatus(context, ref, appointment, 'completed'),
-                    icon: const Icon(Icons.check_circle_outline_rounded),
-                    label: const Text('Complete'),
-                  ),
-                  FilledButton.tonalIcon(
-                    onPressed: () =>
                         _changeStatus(context, ref, appointment, 'in_progress'),
                     icon: const Icon(Icons.timelapse_rounded),
                     label: const Text('In Progress'),
+                  ),
+                  FilledButton.tonalIcon(
+                    onPressed: () =>
+                        _postponeAppointment(context, ref, appointment),
+                    icon: const Icon(Icons.event_repeat_outlined),
+                    label: const Text('Postpone'),
                   ),
                   OutlinedButton.icon(
                     onPressed: () =>
                         _cancelAppointment(context, ref, appointment),
                     icon: const Icon(Icons.cancel_outlined),
                     label: const Text('Cancel'),
+                  ),
+                  FilledButton.tonalIcon(
+                    onPressed: () =>
+                        _changeStatus(context, ref, appointment, 'no_show'),
+                    icon: const Icon(Icons.person_off_outlined),
+                    label: const Text('No Show'),
                   ),
                 ],
               ),
@@ -315,6 +409,81 @@ class _AppointmentCalendarScreenState
         SnackService.showSuccess(context, 'Appointment cancelled.');
       },
       error: (error) => SnackService.showError(context, error.message),
+    );
+  }
+
+  Future<void> _postponeAppointment(
+    BuildContext context,
+    WidgetRef ref,
+    Appointment appointment,
+  ) async {
+    final date = await showDatePicker(
+      context: context,
+      firstDate: IndiaTime.dateOnly(IndiaTime.now()),
+      lastDate: DateTime(2035),
+      initialDate:
+          IndiaTime.dateOnly(
+            appointment.scheduledAt,
+          ).isBefore(IndiaTime.dateOnly(IndiaTime.now()))
+          ? IndiaTime.dateOnly(IndiaTime.now())
+          : IndiaTime.dateOnly(appointment.scheduledAt),
+    );
+    if (date == null || !context.mounted) {
+      return;
+    }
+
+    final time = await showTimePicker(
+      context: context,
+      initialTime: TimeOfDay.fromDateTime(appointment.scheduledAt),
+    );
+    if (time == null || !context.mounted) {
+      return;
+    }
+
+    final scheduledAt = DateTime(
+      date.year,
+      date.month,
+      date.day,
+      time.hour,
+      time.minute,
+    );
+    if (scheduledAt.isBefore(IndiaTime.now())) {
+      SnackService.showError(context, 'Choose a future time to postpone.');
+      return;
+    }
+
+    final result = await ref
+        .read(appointmentRepositoryProvider)
+        .updateAppointment(
+          appointment.id,
+          AppointmentUpdatePayload(
+            scheduledAt: scheduledAt,
+            status: 'scheduled',
+          ),
+        );
+    if (!context.mounted) {
+      return;
+    }
+    result.when(
+      success: (_) {
+        Navigator.of(context).pop();
+        ref.invalidate(appointmentsForDayProvider(_selectedDayKey));
+        ref.invalidate(
+          appointmentsForDayProvider(appointmentDayKey(scheduledAt)),
+        );
+        ref.invalidate(dashboardProvider);
+        SnackService.showSuccess(context, 'Appointment postponed.');
+      },
+      error: (error) {
+        if (error.isConflict) {
+          SnackService.showError(
+            context,
+            'That time slot is already taken. Please choose another time.',
+          );
+        } else {
+          SnackService.showError(context, error.message);
+        }
+      },
     );
   }
 

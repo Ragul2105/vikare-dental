@@ -10,6 +10,8 @@ class Appointment {
     required this.status,
     this.reason,
     this.notes,
+    this.assignedPractitionerId,
+    this.practitionerName,
   });
 
   final String id;
@@ -20,6 +22,8 @@ class Appointment {
   final String status;
   final String? reason;
   final String? notes;
+  final String? assignedPractitionerId;
+  final String? practitionerName;
 
   factory Appointment.fromJson(Map<String, dynamic> json) => Appointment(
     id: json['id'] as String,
@@ -30,6 +34,8 @@ class Appointment {
     status: json['status'] as String? ?? 'scheduled',
     reason: json['reason'] as String?,
     notes: json['notes'] as String?,
+    assignedPractitionerId: json['assigned_practitioner_id'] as String?,
+    practitionerName: json['practitioner_name'] as String?,
   );
 }
 
@@ -61,6 +67,7 @@ class AppointmentCreatePayload {
     required this.durationMinutes,
     this.reason,
     this.notes,
+    this.assignedPractitionerId,
   });
 
   final String patientId;
@@ -68,6 +75,7 @@ class AppointmentCreatePayload {
   final int durationMinutes;
   final String? reason;
   final String? notes;
+  final String? assignedPractitionerId;
 
   Map<String, dynamic> toJson() => {
     'patient_id': patientId,
@@ -75,6 +83,7 @@ class AppointmentCreatePayload {
     'duration_minutes': durationMinutes,
     'reason': reason,
     'notes': notes,
+    'assigned_practitioner_id': assignedPractitionerId,
   };
 }
 
@@ -85,6 +94,7 @@ class AppointmentUpdatePayload {
     this.status,
     this.reason,
     this.notes,
+    this.assignedPractitionerId,
   });
 
   final DateTime? scheduledAt;
@@ -92,6 +102,7 @@ class AppointmentUpdatePayload {
   final String? status;
   final String? reason;
   final String? notes;
+  final String? assignedPractitionerId;
 
   Map<String, dynamic> toJson() => {
     if (scheduledAt != null)
@@ -100,5 +111,7 @@ class AppointmentUpdatePayload {
     if (status != null) 'status': status,
     if (reason != null) 'reason': reason,
     if (notes != null) 'notes': notes,
+    if (assignedPractitionerId != null)
+      'assigned_practitioner_id': assignedPractitionerId,
   };
 }

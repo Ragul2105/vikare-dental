@@ -8,11 +8,20 @@ class Patient {
     this.gender,
     this.address,
     this.medicalHistory,
+    this.currentMedications,
     this.allergies,
+    this.bloodType,
+    this.clinicalFlags = const [],
+    this.wasHospitalized = false,
+    this.hospitalizationDate,
+    this.hospitalizationReason,
+    this.pastDentalHistory,
     required this.whatsappEnabled,
     required this.isDeleted,
     required this.createdAt,
     required this.updatedAt,
+    this.lastVisitDate,
+    this.doctorName,
   });
 
   final String id;
@@ -23,11 +32,20 @@ class Patient {
   final String? gender;
   final String? address;
   final String? medicalHistory;
+  final String? currentMedications;
   final String? allergies;
+  final String? bloodType;
+  final List<String> clinicalFlags;
+  final bool wasHospitalized;
+  final DateTime? hospitalizationDate;
+  final String? hospitalizationReason;
+  final String? pastDentalHistory;
   final bool whatsappEnabled;
   final bool isDeleted;
   final DateTime createdAt;
   final DateTime updatedAt;
+  final DateTime? lastVisitDate;
+  final String? doctorName;
 
   factory Patient.fromJson(Map<String, dynamic> json) => Patient(
     id: json['id'] as String,
@@ -38,11 +56,26 @@ class Patient {
     gender: json['gender'] as String?,
     address: json['address'] as String?,
     medicalHistory: json['medical_history'] as String?,
+    currentMedications: json['current_medications'] as String?,
     allergies: json['allergies'] as String?,
+    bloodType: json['blood_type'] as String?,
+    clinicalFlags: (json['clinical_flags'] as List<dynamic>? ?? const [])
+        .map((item) => item.toString())
+        .toList(growable: false),
+    wasHospitalized: json['was_hospitalized'] as bool? ?? false,
+    hospitalizationDate: json['hospitalization_date'] == null
+        ? null
+        : DateTime.parse(json['hospitalization_date'] as String),
+    hospitalizationReason: json['hospitalization_reason'] as String?,
+    pastDentalHistory: json['past_dental_history'] as String?,
     whatsappEnabled: json['whatsapp_enabled'] as bool? ?? true,
     isDeleted: json['is_deleted'] as bool? ?? false,
     createdAt: DateTime.parse(json['created_at'] as String),
     updatedAt: DateTime.parse(json['updated_at'] as String),
+    lastVisitDate: json['last_visit_date'] == null
+        ? null
+        : DateTime.parse(json['last_visit_date'] as String),
+    doctorName: json['doctor_name'] as String?,
   );
 
   Map<String, dynamic> toJson() => {
@@ -54,11 +87,23 @@ class Patient {
     'gender': gender,
     'address': address,
     'medical_history': medicalHistory,
+    'current_medications': currentMedications,
     'allergies': allergies,
+    'blood_type': bloodType,
+    'clinical_flags': clinicalFlags,
+    'was_hospitalized': wasHospitalized,
+    'hospitalization_date': hospitalizationDate
+        ?.toIso8601String()
+        .split('T')
+        .first,
+    'hospitalization_reason': hospitalizationReason,
+    'past_dental_history': pastDentalHistory,
     'whatsapp_enabled': whatsappEnabled,
     'is_deleted': isDeleted,
     'created_at': createdAt.toIso8601String(),
     'updated_at': updatedAt.toIso8601String(),
+    'last_visit_date': lastVisitDate?.toIso8601String().split('T').first,
+    'doctor_name': doctorName,
   };
 }
 
@@ -70,7 +115,14 @@ class PatientPayload {
     this.gender,
     this.address,
     this.medicalHistory,
+    this.currentMedications,
     this.allergies,
+    this.bloodType,
+    this.clinicalFlags = const [],
+    this.wasHospitalized = false,
+    this.hospitalizationDate,
+    this.hospitalizationReason,
+    this.pastDentalHistory,
     this.whatsappEnabled = true,
   });
 
@@ -80,7 +132,14 @@ class PatientPayload {
   final String? gender;
   final String? address;
   final String? medicalHistory;
+  final String? currentMedications;
   final String? allergies;
+  final String? bloodType;
+  final List<String> clinicalFlags;
+  final bool wasHospitalized;
+  final DateTime? hospitalizationDate;
+  final String? hospitalizationReason;
+  final String? pastDentalHistory;
   final bool whatsappEnabled;
 
   Map<String, dynamic> toJson() => {
@@ -90,7 +149,17 @@ class PatientPayload {
     'gender': gender,
     'address': address,
     'medical_history': medicalHistory,
+    'current_medications': currentMedications,
     'allergies': allergies,
+    'blood_type': bloodType,
+    'clinical_flags': clinicalFlags,
+    'was_hospitalized': wasHospitalized,
+    'hospitalization_date': hospitalizationDate
+        ?.toIso8601String()
+        .split('T')
+        .first,
+    'hospitalization_reason': hospitalizationReason,
+    'past_dental_history': pastDentalHistory,
     'whatsapp_enabled': whatsappEnabled,
   };
 }

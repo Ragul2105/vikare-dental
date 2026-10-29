@@ -3,7 +3,7 @@ from __future__ import annotations
 from datetime import date
 import uuid
 
-from sqlalchemy import Date, ForeignKey, Text
+from sqlalchemy import Boolean, Date, ForeignKey, Text
 from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
@@ -29,6 +29,9 @@ class Visit(Base, TimestampMixin):
     visit_date: Mapped[date] = mapped_column(Date, nullable=False, index=True)
     notes: Mapped[str | None] = mapped_column(Text, nullable=True)
     diagnosis: Mapped[str | None] = mapped_column(Text, nullable=True)
+    follow_up_required: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
+    follow_up_date: Mapped[date | None] = mapped_column(Date, nullable=True)
+    follow_up_notes: Mapped[str | None] = mapped_column(Text, nullable=True)
     created_by: Mapped[uuid.UUID] = mapped_column(
         UUID(as_uuid=True),
         ForeignKey("users.id"),
@@ -59,4 +62,3 @@ class Visit(Base, TimestampMixin):
         uselist=False,
         cascade="all, delete-orphan",
     )
-

@@ -28,6 +28,10 @@ class StaffService:
         user = User(
             name=data.name,
             role=data.role,
+            email=data.email,
+            mobile=data.mobile,
+            job_title=data.job_title,
+            schedule=data.schedule,
             pin_hash=hash_pin(data.pin),
             is_active=True,
         )
@@ -86,8 +90,7 @@ class StaffService:
             raise HTTPException(status_code=409, detail="Staff member name already exists")
 
     def _validate_pin(self, pin: str) -> None:
-        if len(pin) < 4 or len(pin) > 8:
-            raise HTTPException(status_code=422, detail="PIN must be 4-8 digits")
+        if len(pin) != 4:
+            raise HTTPException(status_code=422, detail="PIN must be exactly 4 digits")
         if not pin.isdigit():
             raise HTTPException(status_code=422, detail="PIN must contain digits only")
-

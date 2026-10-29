@@ -4,242 +4,219 @@ import 'package:go_router/go_router.dart';
 
 import '../../../core/api/api_response.dart';
 import '../../../core/auth/auth_controller.dart';
+import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_spacing.dart';
 import '../../../core/utils/date_formatter.dart';
 import '../../../core/widgets/app_badge.dart';
-import '../../../core/widgets/app_button.dart';
 import '../../../core/widgets/app_card.dart';
 import '../../../core/widgets/app_error_view.dart';
 import '../../../core/widgets/app_loading.dart';
-import '../../../core/widgets/app_section_header.dart';
+import '../../../core/widgets/app_scaffold.dart';
 import '../../../core/widgets/snack_service.dart';
 import '../data/patient_repository.dart';
 import '../domain/patient_models.dart';
 import 'patient_list_screen.dart';
 
-class _PatientDetailBundle {
-  const _PatientDetailBundle({required this.patient, required this.visits});
-
+class PatientDetailBundle {
+  const PatientDetailBundle({required this.patient, required this.visits});
   final Patient patient;
   final List<PatientVisitSummary> visits;
 }
 
 final patientDetailBundleProvider =
-    FutureProvider.family<_PatientDetailBundle, String>((ref, patientId) async {
+    FutureProvider.family<PatientDetailBundle, String>((ref, patientId) async {
       final repository = ref.read(patientRepositoryProvider);
-      final patientResult = await repository.getPatient(patientId);
-      final visitResult = await repository.listVisits(patientId);
-
-      return _PatientDetailBundle(
-        patient: patientResult.unwrap(),
-        visits: visitResult.unwrap(),
+      return PatientDetailBundle(
+        patient: (await repository.getPatient(patientId)).unwrap(),
+        visits: (await repository.listVisits(patientId)).unwrap(),
       );
     });
 
 class PatientDetailScreen extends ConsumerWidget {
   const PatientDetailScreen({super.key, required this.patientId});
-
   final String patientId;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final detailState = ref.watch(patientDetailBundleProvider(patientId));
-    final authState = ref.watch(authControllerProvider);
-
-    return Scaffold(
-      appBar: AppBar(
-        title: const Text('Patient Detail'),
-        actions: [
-          IconButton(
-            onPressed: () => context.push('/patients/$patientId/edit'),
-            icon: const Icon(Icons.edit_outlined),
-          ),
-          if (authState.user?.role == 'admin')
-            IconButton(
-              onPressed: () => _deletePatient(context, ref),
-              icon: const Icon(Icons.delete_outline_rounded),
-            ),
-        ],
-      ),
+    final state = ref.watch(patientDetailBundleProvider(patientId));
+    final isAdmin = ref.watch(authControllerProvider).user?.role == 'admin';
+    return AppScaffold(
+      currentIndex: 1,
       floatingActionButton: FloatingActionButton.extended(
         onPressed: () => context.push('/patients/$patientId/visits/new'),
-        icon: const Icon(Icons.note_add_outlined),
+        icon: const Icon(Icons.add_circle_outline_rounded),
         label: const Text('New Visit'),
       ),
-      body: SafeArea(
-        child: detailState.when(
-          loading: () => const AppLoading(),
-          error: (error, _) => AppErrorView(
-            message: error is AppError
-                ? error.message
-                : 'Failed to load patient detail.',
-            onRetry: () =>
-                ref.invalidate(patientDetailBundleProvider(patientId)),
-          ),
-          data: (bundle) => ListView(
-            padding: const EdgeInsets.all(AppSpacing.pagePadding),
-            children: [
-              AppCard(
-                child: Column(
+      body: state.when(
+        loading: () => const AppLoading(),
+        error: (error, _) => AppErrorView(
+          message: error is AppError
+              ? error.message
+              : 'Failed to load patient detail.',
+          onRetry: () => ref.invalidate(patientDetailBundleProvider(patientId)),
+        ),
+        data: (bundle) => ListView(
+          padding: const EdgeInsets.all(AppSpacing.pagePadding),
+          children: [
+            Row(
+              children: [
+                CircleAvatar(
+                  radius: 22,
+                  backgroundColor: const Color(0xFFD9F2F0),
+                  child: Text(
+                    bundle.patient.name.characters.first.toUpperCase(),
+                  ),
+                ),
+                const SizedBox(width: 12),
+                Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
                       bundle.patient.name,
-                      style: Theme.of(context).textTheme.displayMedium,
+                      style: Theme.of(context).textTheme.titleLarge,
                     ),
-                    const SizedBox(height: AppSpacing.sm),
                     Text(
-                      '${bundle.patient.patientUid}  •  ${bundle.patient.mobile}',
-                      style: Theme.of(context).textTheme.bodyLarge,
+                      'ID: #${bundle.patient.patientUid}',
+                      style: Theme.of(context).textTheme.labelMedium,
                     ),
-                    const SizedBox(height: AppSpacing.md),
-                    Wrap(
-                      spacing: AppSpacing.sm,
-                      runSpacing: AppSpacing.sm,
+                  ],
+                ),
+                const Spacer(),
+                IconButton(
+                  onPressed: () => context.push('/patients/$patientId/edit'),
+                  icon: const Icon(Icons.edit_outlined),
+                ),
+                if (isAdmin)
+                  IconButton(
+                    onPressed: () => _deletePatient(context, ref),
+                    icon: const Icon(
+                      Icons.delete_outline_rounded,
+                      color: AppColors.error,
+                    ),
+                  ),
+              ],
+            ),
+            const SizedBox(height: 24),
+            Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Expanded(
+                  flex: 3,
+                  child: AppCard(
+                    child: Row(
                       children: [
-                        if (bundle.patient.gender != null)
-                          AppBadge(label: bundle.patient.gender!),
-                        if (bundle.patient.age != null)
-                          AppBadge(label: '${bundle.patient.age} yrs'),
-                        AppBadge(
-                          label: bundle.patient.whatsappEnabled
-                              ? 'WhatsApp on'
-                              : 'WhatsApp off',
+                        Expanded(
+                          child: _Metric(
+                            label: 'AGE / SEX',
+                            value:
+                                '${bundle.patient.age ?? '—'} / ${bundle.patient.gender?.characters.first ?? '—'}',
+                          ),
+                        ),
+                        const VerticalDivider(),
+                        Expanded(
+                          child: _Metric(
+                            label: 'PHONE',
+                            value: bundle.patient.mobile,
+                          ),
+                        ),
+                        const VerticalDivider(),
+                        Expanded(
+                          child: _Metric(
+                            label: 'BLOOD TYPE',
+                            value: bundle.patient.bloodType ?? '—',
+                          ),
                         ),
                       ],
                     ),
-                    if ((bundle.patient.address ?? '').isNotEmpty) ...[
-                      const SizedBox(height: AppSpacing.lg),
-                      Text(
-                        'Address',
-                        style: Theme.of(context).textTheme.titleMedium,
-                      ),
-                      const SizedBox(height: AppSpacing.xs),
-                      Text(
-                        bundle.patient.address!,
-                        style: Theme.of(context).textTheme.bodyLarge,
-                      ),
-                    ],
-                    if ((bundle.patient.medicalHistory ?? '').isNotEmpty) ...[
-                      const SizedBox(height: AppSpacing.lg),
-                      Text(
-                        'Medical History',
-                        style: Theme.of(context).textTheme.titleMedium,
-                      ),
-                      const SizedBox(height: AppSpacing.xs),
-                      Text(
-                        bundle.patient.medicalHistory!,
-                        style: Theme.of(context).textTheme.bodyLarge,
-                      ),
-                    ],
-                    if ((bundle.patient.allergies ?? '').isNotEmpty) ...[
-                      const SizedBox(height: AppSpacing.lg),
-                      Text(
-                        'Allergies',
-                        style: Theme.of(context).textTheme.titleMedium,
-                      ),
-                      const SizedBox(height: AppSpacing.xs),
-                      Text(
-                        bundle.patient.allergies!,
-                        style: Theme.of(context).textTheme.bodyLarge,
-                      ),
-                    ],
-                  ],
-                ),
-              ),
-              const SizedBox(height: AppSpacing.xl),
-              AppSectionHeader(
-                title: 'Visit history',
-                action: AppButton(
-                  label: 'Add Visit',
-                  icon: Icons.add_rounded,
-                  expanded: false,
-                  onPressed: () =>
-                      context.push('/patients/$patientId/visits/new'),
-                ),
-              ),
-              const SizedBox(height: AppSpacing.md),
-              if (bundle.visits.isEmpty)
-                const AppCard(
-                  child: Padding(
-                    padding: EdgeInsets.all(AppSpacing.md),
-                    child: Text('No visits recorded yet.'),
                   ),
-                )
-              else
-                ...bundle.visits.map(
-                  (visit) => Padding(
-                    padding: const EdgeInsets.only(bottom: AppSpacing.md),
-                    child: AppCard(
-                      onTap: () => context.push(
-                        '/patients/$patientId/visits/${visit.id}',
-                      ),
-                      child: LayoutBuilder(
-                        builder: (context, constraints) {
-                          final stackBadge = constraints.maxWidth < 420;
-
-                          return Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              if (stackBadge) ...[
-                                Text(
-                                  DateFormatter.shortDate(visit.visitDate),
-                                  style: Theme.of(
-                                    context,
-                                  ).textTheme.titleMedium,
-                                ),
-                                if ((visit.diagnosis ?? '').isNotEmpty) ...[
-                                  const SizedBox(height: AppSpacing.sm),
-                                  AppBadge(label: visit.diagnosis!),
-                                ],
-                              ] else
-                                Row(
-                                  crossAxisAlignment: CrossAxisAlignment.start,
-                                  children: [
-                                    Expanded(
-                                      child: Text(
-                                        DateFormatter.shortDate(
-                                          visit.visitDate,
-                                        ),
-                                        style: Theme.of(
-                                          context,
-                                        ).textTheme.titleMedium,
-                                      ),
-                                    ),
-                                    if ((visit.diagnosis ?? '').isNotEmpty)
-                                      AppBadge(label: visit.diagnosis!),
-                                  ],
-                                ),
-                              if ((visit.notes ?? '').isNotEmpty) ...[
-                                const SizedBox(height: AppSpacing.sm),
-                                Text(
-                                  visit.notes!,
-                                  style: Theme.of(context).textTheme.bodyMedium,
-                                ),
-                              ],
-                              const SizedBox(height: AppSpacing.md),
-                              Wrap(
-                                spacing: AppSpacing.sm,
-                                runSpacing: AppSpacing.sm,
-                                children: [
-                                  AppBadge(label: '${visit.photoCount} photos'),
-                                  AppBadge(
-                                    label: '${visit.treatmentCount} treatments',
-                                  ),
-                                  AppBadge(
-                                    label: '${visit.medicationCount} meds',
-                                  ),
-                                ],
+                ),
+                const SizedBox(width: 18),
+                Expanded(
+                  child: AppCard(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Row(
+                          children: [
+                            Text(
+                              'ALERTS',
+                              style: Theme.of(context).textTheme.labelLarge,
+                            ),
+                            const Spacer(),
+                            const Icon(
+                              Icons.warning_rounded,
+                              color: AppColors.error,
+                              size: 18,
+                            ),
+                          ],
+                        ),
+                        const SizedBox(height: 10),
+                        Wrap(
+                          spacing: 8,
+                          runSpacing: 8,
+                          children: [
+                            if ((bundle.patient.allergies ?? '').isNotEmpty)
+                              AppBadge(
+                                label: '${bundle.patient.allergies} Allergy',
                               ),
-                            ],
-                          );
-                        },
-                      ),
+                            ...bundle.patient.clinicalFlags.map(
+                              (flag) => AppBadge(label: flag),
+                            ),
+                            if ((bundle.patient.allergies ?? '').isEmpty &&
+                                bundle.patient.clinicalFlags.isEmpty)
+                              const Text('No clinical alerts'),
+                          ],
+                        ),
+                      ],
                     ),
                   ),
                 ),
-            ],
-          ),
+              ],
+            ),
+            const SizedBox(height: 26),
+            Row(
+              children: [
+                Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      'Visit History',
+                      style: Theme.of(context).textTheme.displayMedium,
+                    ),
+                    Text(
+                      'Procedural timeline and clinical notes',
+                      style: Theme.of(context).textTheme.bodyMedium,
+                    ),
+                  ],
+                ),
+                const Spacer(),
+                OutlinedButton.icon(
+                  onPressed: () =>
+                      context.push('/patients/$patientId/visits/new'),
+                  icon: const Icon(Icons.add_circle_outline_rounded),
+                  label: const Text('New Visit'),
+                ),
+              ],
+            ),
+            const SizedBox(height: 16),
+            if (bundle.visits.isEmpty)
+              const AppCard(
+                child: Padding(
+                  padding: EdgeInsets.all(20),
+                  child: Text('No visits recorded yet.'),
+                ),
+              )
+            else
+              ...bundle.visits.asMap().entries.map(
+                (entry) => _VisitHistoryCard(
+                  visit: entry.value,
+                  current: entry.key == 0,
+                  onTap: () => context.push(
+                    '/patients/$patientId/visits/${entry.value.id}',
+                  ),
+                ),
+              ),
+          ],
         ),
       ),
     );
@@ -248,44 +225,136 @@ class PatientDetailScreen extends ConsumerWidget {
   Future<void> _deletePatient(BuildContext context, WidgetRef ref) async {
     final reason = await showDialog<String>(
       context: context,
-      builder: (context) => const _DeleteReasonDialog(),
+      builder: (_) => const _DeleteReasonDialog(),
     );
-
-    if (reason == null || reason.trim().length < 5) {
-      return;
-    }
-
+    if (reason == null || reason.trim().length < 5) return;
     final result = await ref
         .read(patientRepositoryProvider)
         .deletePatient(patientId, reason.trim());
+    if (!context.mounted) return;
     result.when(
       success: (_) {
         ref.invalidate(patientListProvider);
-        ref.invalidate(patientDetailBundleProvider(patientId));
-        if (context.mounted) {
-          SnackService.showSuccess(context, 'Patient deleted.');
-          context.pop();
-        }
+        SnackService.showSuccess(context, 'Patient deleted.');
+        context.go('/patients');
       },
-      error: (error) {
-        if (context.mounted) {
-          SnackService.showError(context, error.message);
-        }
-      },
+      error: (error) => SnackService.showError(context, error.message),
     );
   }
 }
 
+class _Metric extends StatelessWidget {
+  const _Metric({required this.label, required this.value});
+  final String label;
+  final String value;
+  @override
+  Widget build(BuildContext context) => Padding(
+    padding: const EdgeInsets.symmetric(horizontal: 12),
+    child: Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          label,
+          style: Theme.of(
+            context,
+          ).textTheme.labelMedium?.copyWith(fontSize: 10),
+        ),
+        const SizedBox(height: 7),
+        Text(value, style: Theme.of(context).textTheme.titleLarge),
+      ],
+    ),
+  );
+}
+
+class _VisitHistoryCard extends StatelessWidget {
+  const _VisitHistoryCard({
+    required this.visit,
+    required this.current,
+    required this.onTap,
+  });
+  final PatientVisitSummary visit;
+  final bool current;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) => Padding(
+    padding: const EdgeInsets.only(bottom: 18, left: 48),
+    child: Stack(
+      clipBehavior: Clip.none,
+      children: [
+        AppCard(
+          onTap: onTap,
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              if (current)
+                Text(
+                  'CURRENT VISIT',
+                  style: Theme.of(
+                    context,
+                  ).textTheme.labelMedium?.copyWith(color: AppColors.info),
+                ),
+              const SizedBox(height: 4),
+              Text(
+                visit.diagnosis?.isNotEmpty == true
+                    ? visit.diagnosis!
+                    : 'Clinical Visit',
+                style: Theme.of(context).textTheme.titleLarge,
+              ),
+              const SizedBox(height: 5),
+              Text(
+                DateFormatter.shortDate(visit.visitDate),
+                style: Theme.of(context).textTheme.bodyMedium,
+              ),
+              if ((visit.notes ?? '').isNotEmpty) ...[
+                const SizedBox(height: 16),
+                Text(
+                  visit.notes!,
+                  style: Theme.of(context).textTheme.bodyLarge,
+                ),
+              ],
+              const SizedBox(height: 14),
+              Wrap(
+                spacing: 8,
+                children: [
+                  AppBadge(label: '${visit.treatmentCount} treatments'),
+                  AppBadge(label: '${visit.medicationCount} medications'),
+                  AppBadge(label: '${visit.photoCount} attachments'),
+                ],
+              ),
+            ],
+          ),
+        ),
+        Positioned(
+          left: -48,
+          top: 8,
+          child: CircleAvatar(
+            radius: 20,
+            backgroundColor: current
+                ? AppColors.accent
+                : const Color(0xFFE8EEF5),
+            child: Icon(
+              current
+                  ? Icons.brightness_high_rounded
+                  : Icons.medical_services_outlined,
+              color: current ? Colors.white : AppColors.textMuted,
+              size: 19,
+            ),
+          ),
+        ),
+      ],
+    ),
+  );
+}
+
 class _DeleteReasonDialog extends StatefulWidget {
   const _DeleteReasonDialog();
-
   @override
   State<_DeleteReasonDialog> createState() => _DeleteReasonDialogState();
 }
 
 class _DeleteReasonDialogState extends State<_DeleteReasonDialog> {
   final _controller = TextEditingController();
-
   @override
   void dispose() {
     _controller.dispose();
@@ -293,28 +362,22 @@ class _DeleteReasonDialogState extends State<_DeleteReasonDialog> {
   }
 
   @override
-  Widget build(BuildContext context) {
-    return AlertDialog(
-      scrollable: true,
-      title: const Text('Delete Patient'),
-      content: TextField(
-        controller: _controller,
-        maxLines: 3,
-        decoration: const InputDecoration(
-          labelText: 'Reason',
-          hintText: 'Why is this patient being deleted?',
-        ),
+  Widget build(BuildContext context) => AlertDialog(
+    title: const Text('Delete Patient'),
+    content: TextField(
+      controller: _controller,
+      maxLines: 3,
+      decoration: const InputDecoration(labelText: 'Reason'),
+    ),
+    actions: [
+      TextButton(
+        onPressed: () => Navigator.pop(context),
+        child: const Text('Cancel'),
       ),
-      actions: [
-        TextButton(
-          onPressed: () => Navigator.of(context).pop(),
-          child: const Text('Cancel'),
-        ),
-        FilledButton(
-          onPressed: () => Navigator.of(context).pop(_controller.text),
-          child: const Text('Delete'),
-        ),
-      ],
-    );
-  }
+      FilledButton(
+        onPressed: () => Navigator.pop(context, _controller.text),
+        child: const Text('Delete'),
+      ),
+    ],
+  );
 }

@@ -21,7 +21,10 @@ class User(Base, TimestampMixin):
     )
     name: Mapped[str] = mapped_column(String(100), nullable=False, unique=True)
     role: Mapped[str] = mapped_column(String(20), nullable=False, index=True)
+    email: Mapped[str | None] = mapped_column(String(255), nullable=True)
+    mobile: Mapped[str | None] = mapped_column(String(15), nullable=True)
+    job_title: Mapped[str | None] = mapped_column(String(100), nullable=True)
+    schedule: Mapped[str | None] = mapped_column(String(150), nullable=True)
     pin_hash: Mapped[str] = mapped_column(String(255), nullable=False)
     is_active: Mapped[bool] = mapped_column(Boolean, default=True, nullable=False)
     last_login_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
-

@@ -38,10 +38,22 @@ class AdminRepository extends BaseRepository {
     required String name,
     required String role,
     required String pin,
+    String? email,
+    String? mobile,
+    String? jobTitle,
+    String? schedule,
   }) => safeCall<StaffMember>(
     call: () => dio.post(
       ApiEndpoints.staff,
-      data: {'name': name, 'role': role, 'pin': pin},
+      data: {
+        'name': name,
+        'role': role,
+        'pin': pin,
+        'email': email,
+        'mobile': mobile,
+        'job_title': jobTitle,
+        'schedule': schedule,
+      },
     ),
     parser: (data) => StaffMember.fromJson(data as Map<String, dynamic>),
   );
@@ -51,10 +63,22 @@ class AdminRepository extends BaseRepository {
     required String name,
     required String role,
     required bool isActive,
+    String? email,
+    String? mobile,
+    String? jobTitle,
+    String? schedule,
   }) => safeCall<StaffMember>(
     call: () => dio.patch(
       ApiEndpoints.staffMember(id),
-      data: {'name': name, 'role': role, 'is_active': isActive},
+      data: {
+        'name': name,
+        'role': role,
+        'is_active': isActive,
+        'email': email,
+        'mobile': mobile,
+        'job_title': jobTitle,
+        'schedule': schedule,
+      },
     ),
     parser: (data) => StaffMember.fromJson(data as Map<String, dynamic>),
   );

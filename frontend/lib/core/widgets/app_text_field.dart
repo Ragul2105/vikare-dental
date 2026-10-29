@@ -1,5 +1,8 @@
 import 'package:flutter/material.dart';
 
+import '../theme/app_colors.dart';
+import 'handwriting_input_sheet.dart';
+
 class AppTextField extends StatelessWidget {
   const AppTextField({
     super.key,
@@ -16,6 +19,7 @@ class AppTextField extends StatelessWidget {
     this.suffixIcon,
     this.prefixIcon,
     this.onChanged,
+    this.enableHandwriting = true,
   });
 
   final TextEditingController? controller;
@@ -32,6 +36,37 @@ class AppTextField extends StatelessWidget {
   final Widget? prefixIcon;
   final ValueChanged<String>? onChanged;
 
+  /// Shows a stylus handwriting pad on eligible fields. Numeric/phone keyboards,
+  /// obscured (PIN), read-only, and controller-less fields are auto-excluded.
+  final bool enableHandwriting;
+
+  bool get _handwritingEligible {
+    if (!enableHandwriting || controller == null || readOnly || obscureText) {
+      return false;
+    }
+    return switch (keyboardType) {
+      TextInputType.number ||
+      TextInputType.phone ||
+      TextInputType.datetime => false,
+      _ => true,
+    };
+  }
+
+  Future<void> _openHandwriting(BuildContext context) async {
+    final result = await showHandwritingInputSheet(context, title: label);
+    if (result == null || result.isEmpty) return;
+    final field = controller!;
+    final base = field.text.trim();
+    final combined = [
+      if (base.isNotEmpty) base,
+      result.trim(),
+    ].where((s) => s.isNotEmpty).join(' ');
+    field
+      ..text = combined
+      ..selection = TextSelection.collapsed(offset: combined.length);
+    onChanged?.call(combined);
+  }
+
   @override
   Widget build(BuildContext context) {
     return TextFormField(
@@ -47,9 +82,26 @@ class AppTextField extends StatelessWidget {
       decoration: InputDecoration(
         labelText: label,
         hintText: hint,
-        suffixIcon: suffixIcon,
+        suffixIcon: _buildSuffix(context),
         prefixIcon: prefixIcon,
       ),
+    );
+  }
+
+  Widget? _buildSuffix(BuildContext context) {
+    final handwritingButton = _handwritingEligible
+        ? IconButton(
+            tooltip: 'Write with stylus',
+            icon: const Icon(Icons.draw_rounded, color: AppColors.info),
+            onPressed: () => _openHandwriting(context),
+          )
+        : null;
+
+    if (handwritingButton == null) return suffixIcon;
+    if (suffixIcon == null) return handwritingButton;
+    return Row(
+      mainAxisSize: MainAxisSize.min,
+      children: [handwritingButton, suffixIcon!],
     );
   }
 }

@@ -7,7 +7,7 @@ from pydantic import BaseModel, ConfigDict, Field
 
 class LoginRequest(BaseModel):
     user_id: uuid.UUID
-    pin: str = Field(..., min_length=4, max_length=8, pattern=r"^\d{4,8}$")
+    pin: str = Field(..., min_length=4, max_length=4, pattern=r"^\d{4}$")
 
 
 class RefreshRequest(BaseModel):
@@ -30,4 +30,3 @@ class UserSummaryResponse(BaseModel):
 
 class UserListResponse(BaseModel):
     items: list[UserSummaryResponse]
-

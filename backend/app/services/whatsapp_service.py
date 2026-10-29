@@ -3,6 +3,7 @@ from __future__ import annotations
 from datetime import datetime, timedelta, timezone
 
 from sqlalchemy import select
+from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 import httpx
 import structlog
@@ -22,7 +23,29 @@ class WhatsAppService:
     BASE_URL = settings.wati_api_url
     HEADERS = {"Authorization": f"Bearer {settings.wati_api_token}"}
 
-    async def send_appointment_reminder(self, patient: Patient, appointment: Appointment, reminder_type: str) -> None:
+    async def send_appointment_confirmation(
+        self,
+        patient: Patient,
+        appointment: Appointment,
+        db: AsyncSession | None = None,
+    ) -> None:
+        message = self._build_confirmation_message(patient, appointment)
+        await self._send_message(patient.mobile, message)
+        await self._log_message(
+            patient_id=patient.id,
+            appointment_id=appointment.id,
+            msg_type="appointment_confirmation",
+            status="sent",
+            details={"delivery": self._delivery_mode(), "message": message},
+            db=db,
+        )
+
+    async def send_appointment_reminder(
+        self,
+        patient: Patient,
+        appointment: Appointment,
+        reminder_type: str,
+    ) -> None:
         message = self._build_reminder_message(patient, appointment, reminder_type)
         await self._send_message(patient.mobile, message)
         await self._log_message(
@@ -30,6 +53,7 @@ class WhatsAppService:
             appointment_id=appointment.id,
             msg_type=f"reminder_{reminder_type}",
             status="sent",
+            details={"delivery": self._delivery_mode(), "message": message},
         )
 
     async def send_prescription_pdf(self, patient: Patient, pdf_url: str) -> None:
@@ -42,6 +66,9 @@ class WhatsAppService:
         )
 
     async def _send_message(self, mobile: str, message: str) -> None:
+        if self._mock_delivery:
+            logger.info("whatsapp_mock_message", mobile=mobile, message=message)
+            return
         async with httpx.AsyncClient(timeout=10) as client:
             response = await client.post(
                 f"{self.BASE_URL}/api/v1/sendSessionMessage/{mobile}",
@@ -51,6 +78,9 @@ class WhatsAppService:
             response.raise_for_status()
 
     async def _send_document(self, mobile: str, url: str, filename: str) -> None:
+        if self._mock_delivery:
+            logger.info("whatsapp_mock_document", mobile=mobile, url=url, filename=filename)
+            return
         async with httpx.AsyncClient(timeout=15) as client:
             response = await client.post(
                 f"{self.BASE_URL}/api/v1/sendFile/{mobile}",
@@ -59,11 +89,22 @@ class WhatsAppService:
             )
             response.raise_for_status()
 
+    def _build_confirmation_message(self, patient: Patient, appointment: Appointment) -> str:
+        scheduled_at = ensure_india_time(appointment.scheduled_at)
+        time_str = scheduled_at.strftime("%I:%M %p")
+        date_str = scheduled_at.strftime("%d %b %Y")
+        return (
+            f"Hello {patient.name},\n"
+            f"Your Vikare Dental Clinic appointment has been booked for "
+            f"{date_str} at {time_str}.\n"
+            "Please arrive 5 minutes early. Reply or call us if you need to reschedule."
+        )
+
     def _build_reminder_message(self, patient: Patient, appointment: Appointment, reminder_type: str) -> str:
         scheduled_at = ensure_india_time(appointment.scheduled_at)
         time_str = scheduled_at.strftime("%I:%M %p")
         date_str = scheduled_at.strftime("%d %b %Y")
-        window = "tomorrow" if reminder_type == "24h" else "in 1 hour"
+        window = "tomorrow" if reminder_type == "24h" else "in 2 hours"
         return (
             f"Hello {patient.name},\n"
             f"This is a reminder for your dental appointment {window} "
@@ -78,26 +119,41 @@ class WhatsAppService:
         msg_type: str,
         status: str,
         details: dict | None = None,
+        db: AsyncSession | None = None,
     ) -> None:
+        message = WhatsAppMessage(
+            patient_id=patient_id,
+            appointment_id=appointment_id,
+            message_type=msg_type,
+            status=status,
+            details=details,
+        )
+        if db is not None:
+            db.add(message)
+            await db.flush()
+            return
         async with AsyncSessionLocal() as db:
-            db.add(
-                WhatsAppMessage(
-                    patient_id=patient_id,
-                    appointment_id=appointment_id,
-                    message_type=msg_type,
-                    status=status,
-                    details=details,
-                )
-            )
+            db.add(message)
             await db.commit()
+
+    @property
+    def _mock_delivery(self) -> bool:
+        token = settings.wati_api_token.strip().lower()
+        url = settings.wati_api_url.strip().lower()
+        return (
+            settings.environment.lower() != "production"
+            and (token.startswith("dev-") or "dev-account" in url)
+        )
+
+    def _delivery_mode(self) -> str:
+        return "mock" if self._mock_delivery else "wati"
 
 
 async def run_reminder_job() -> None:
     async with AsyncSessionLocal() as db:
         now = datetime.now(timezone.utc)
         windows = [
-            ("24h", now + timedelta(hours=23), now + timedelta(hours=25)),
-            ("1h", now + timedelta(minutes=50), now + timedelta(minutes=70)),
+            ("2h", now + timedelta(minutes=110), now + timedelta(minutes=130)),
         ]
         service = WhatsAppService()
 
@@ -123,7 +179,7 @@ async def run_reminder_job() -> None:
                 if appointment.id in sent_ids:
                     continue
                 patient = appointment.patient
-                if not patient or not patient.whatsapp_enabled:
+                if not patient:
                     continue
                 try:
                     await service.send_appointment_reminder(patient, appointment, reminder_type)

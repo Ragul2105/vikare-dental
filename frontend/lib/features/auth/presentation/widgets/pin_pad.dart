@@ -43,11 +43,7 @@ class PinPad extends StatelessWidget {
                   (digit) =>
                       _PinButton(label: digit, onTap: () => onDigit(digit)),
                 ),
-            _PinButton(
-              icon: Icons.check_rounded,
-              onTap: canSubmit ? onSubmit : null,
-              accent: true,
-            ),
+            const SizedBox.shrink(),
             _PinButton(label: '0', onTap: () => onDigit('0')),
             _PinButton(icon: Icons.backspace_outlined, onTap: onDelete),
           ],
@@ -58,32 +54,24 @@ class PinPad extends StatelessWidget {
 }
 
 class _PinButton extends StatelessWidget {
-  const _PinButton({
-    this.label,
-    this.icon,
-    required this.onTap,
-    this.accent = false,
-  });
+  const _PinButton({this.label, this.icon, required this.onTap});
 
   final String? label;
   final IconData? icon;
   final VoidCallback? onTap;
-  final bool accent;
 
   @override
   Widget build(BuildContext context) {
     final enabled = onTap != null;
     return Material(
-      color: accent ? AppColors.accent : AppColors.surface,
+      color: AppColors.surface,
       borderRadius: BorderRadius.circular(AppSpacing.radiusMd),
       child: InkWell(
         borderRadius: BorderRadius.circular(AppSpacing.radiusMd),
         onTap: onTap,
         child: Container(
           decoration: BoxDecoration(
-            border: Border.all(
-              color: accent ? AppColors.accent : AppColors.border,
-            ),
+            border: Border.all(color: AppColors.border),
             borderRadius: BorderRadius.circular(AppSpacing.radiusMd),
           ),
           alignment: Alignment.center,
@@ -91,14 +79,12 @@ class _PinButton extends StatelessWidget {
               ? Text(
                   label!,
                   style: Theme.of(context).textTheme.displayMedium?.copyWith(
-                    color: accent ? Colors.white : AppColors.textPrimary,
+                    color: AppColors.textPrimary,
                   ),
                 )
               : Icon(
                   icon,
-                  color: enabled
-                      ? (accent ? Colors.white : AppColors.textPrimary)
-                      : AppColors.textSoft,
+                  color: enabled ? AppColors.textPrimary : AppColors.textSoft,
                 ),
         ),
       ),

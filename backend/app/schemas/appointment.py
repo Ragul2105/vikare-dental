@@ -15,6 +15,7 @@ class AppointmentCreate(BaseModel):
     duration_minutes: int = Field(..., ge=5, le=480)
     reason: str | None = Field(None, max_length=500)
     notes: str | None = Field(None, max_length=2000)
+    assigned_practitioner_id: uuid.UUID | None = None
 
 
 class AppointmentUpdate(BaseModel):
@@ -23,6 +24,7 @@ class AppointmentUpdate(BaseModel):
     status: Literal["scheduled", "in_progress", "completed", "cancelled", "no_show"] | None = None
     reason: str | None = Field(None, max_length=500)
     notes: str | None = Field(None, max_length=2000)
+    assigned_practitioner_id: uuid.UUID | None = None
 
 
 class AppointmentResponse(BaseModel):
@@ -36,6 +38,8 @@ class AppointmentResponse(BaseModel):
     status: str
     reason: str | None
     notes: str | None
+    assigned_practitioner_id: uuid.UUID | None
+    practitioner_name: str | None = None
     created_by: uuid.UUID
     created_at: datetime
     updated_at: datetime

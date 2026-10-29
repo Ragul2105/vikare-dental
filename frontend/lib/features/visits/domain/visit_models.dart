@@ -81,6 +81,9 @@ class Visit {
     required this.photos,
     required this.treatments,
     required this.medications,
+    this.followUpRequired = false,
+    this.followUpDate,
+    this.followUpNotes,
   });
 
   final String id;
@@ -92,6 +95,9 @@ class Visit {
   final List<VisitPhoto> photos;
   final List<VisitTreatment> treatments;
   final List<VisitMedication> medications;
+  final bool followUpRequired;
+  final DateTime? followUpDate;
+  final String? followUpNotes;
 
   factory Visit.fromJson(Map<String, dynamic> json) => Visit(
     id: json['id'] as String,
@@ -109,6 +115,11 @@ class Visit {
     medications: (json['medications'] as List<dynamic>? ?? const <dynamic>[])
         .map((item) => VisitMedication.fromJson(item as Map<String, dynamic>))
         .toList(growable: false),
+    followUpRequired: json['follow_up_required'] as bool? ?? false,
+    followUpDate: json['follow_up_date'] == null
+        ? null
+        : DateTime.parse(json['follow_up_date'] as String),
+    followUpNotes: json['follow_up_notes'] as String?,
   );
 }
 
@@ -139,6 +150,9 @@ class VisitCreatePayload {
     this.appointmentId,
     this.treatmentIds = const <String>[],
     this.medicationItems = const <VisitMedicationItemPayload>[],
+    this.followUpRequired = false,
+    this.followUpDate,
+    this.followUpNotes,
   });
 
   final String patientId;
@@ -148,6 +162,9 @@ class VisitCreatePayload {
   final String? appointmentId;
   final List<String> treatmentIds;
   final List<VisitMedicationItemPayload> medicationItems;
+  final bool followUpRequired;
+  final DateTime? followUpDate;
+  final String? followUpNotes;
 
   Map<String, dynamic> toJson() => {
     'patient_id': patientId,
@@ -158,6 +175,9 @@ class VisitCreatePayload {
     'diagnosis': diagnosis,
     'treatment_ids': treatmentIds,
     'medication_items': medicationItems.map((item) => item.toJson()).toList(),
+    'follow_up_required': followUpRequired,
+    'follow_up_date': followUpDate?.toIso8601String().split('T').first,
+    'follow_up_notes': followUpNotes,
   };
 }
 
@@ -167,12 +187,18 @@ class VisitUpdatePayload {
     this.diagnosis,
     this.treatmentIds,
     this.medicationItems,
+    this.followUpRequired,
+    this.followUpDate,
+    this.followUpNotes,
   });
 
   final String? notes;
   final String? diagnosis;
   final List<String>? treatmentIds;
   final List<VisitMedicationItemPayload>? medicationItems;
+  final bool? followUpRequired;
+  final DateTime? followUpDate;
+  final String? followUpNotes;
 
   Map<String, dynamic> toJson() => {
     if (notes != null) 'notes': notes,
@@ -182,5 +208,9 @@ class VisitUpdatePayload {
       'medication_items': medicationItems!
           .map((item) => item.toJson())
           .toList(),
+    if (followUpRequired != null) 'follow_up_required': followUpRequired,
+    if (followUpDate != null)
+      'follow_up_date': followUpDate!.toIso8601String().split('T').first,
+    if (followUpNotes != null) 'follow_up_notes': followUpNotes,
   };
 }

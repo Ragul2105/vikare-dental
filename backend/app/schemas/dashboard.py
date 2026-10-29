@@ -22,9 +22,23 @@ class DashboardAppointmentItem(BaseModel):
         return ensure_india_time(value).isoformat()
 
 
+class DashboardTreatmentItem(BaseModel):
+    name: str
+    count: int
+
+
+class DashboardTrendItem(BaseModel):
+    month: str
+    count: int
+
+
 class DashboardSummaryResponse(BaseModel):
     today: date
     appointments_today: int
     appointments: list[DashboardAppointmentItem]
     total_patients: int
     total_staff: int
+    completed_today: int
+    new_patients_this_month: int
+    top_treatments: list[DashboardTreatmentItem]
+    appointment_trend: list[DashboardTrendItem]

@@ -5,6 +5,7 @@ import '../../../core/api/api_response.dart';
 import '../../../core/api/master_repository.dart';
 import '../../../core/auth/auth_controller.dart';
 import '../../../core/models/master_data.dart';
+import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_spacing.dart';
 import '../../../core/utils/date_formatter.dart';
 import '../../../core/utils/validators.dart';
@@ -41,7 +42,6 @@ class AdminPanelScreen extends ConsumerWidget {
     final staffState = ref.watch(staffProvider);
     final treatmentsState = ref.watch(treatmentsProvider);
     final medicationsState = ref.watch(medicationsProvider);
-    final logsState = ref.watch(activityLogsProvider);
 
     return AppScaffold(
       currentIndex: 3,
@@ -51,23 +51,22 @@ class AdminPanelScreen extends ConsumerWidget {
             ref.invalidate(staffProvider);
             ref.invalidate(treatmentsProvider);
             ref.invalidate(medicationsProvider);
-            ref.invalidate(activityLogsProvider);
           },
           child: ListView(
             padding: const EdgeInsets.all(AppSpacing.pagePadding),
             children: [
               Text(
-                'Admin Panel',
+                'Admin Management',
                 style: Theme.of(context).textTheme.displayMedium,
               ),
               const SizedBox(height: AppSpacing.sm),
               Text(
-                'Manage staff, treatment masters, medication masters, and recent activity.',
+                'Manage clinic staff, treatments, medications, and access roles.',
                 style: Theme.of(context).textTheme.bodyLarge,
               ),
               const SizedBox(height: AppSpacing.xl),
               _SectionHeader(
-                title: 'Staff',
+                title: 'Staff Management',
                 action: AppButton(
                   label: 'Add Staff',
                   icon: Icons.person_add_alt_1_rounded,
@@ -86,299 +85,59 @@ class AdminPanelScreen extends ConsumerWidget {
                       message: 'No staff members found.',
                     );
                   }
-                  return Column(
-                    children: staff
-                        .map(
-                          (member) => Padding(
-                            padding: const EdgeInsets.only(
-                              bottom: AppSpacing.md,
-                            ),
-                            child: AppCard(
-                              child: LayoutBuilder(
-                                builder: (context, constraints) {
-                                  final stack = constraints.maxWidth < 440;
-                                  final identity = Column(
-                                    crossAxisAlignment:
-                                        CrossAxisAlignment.start,
-                                    children: [
-                                      Text(
-                                        member.name,
-                                        style: Theme.of(
-                                          context,
-                                        ).textTheme.titleMedium,
-                                      ),
-                                      const SizedBox(height: AppSpacing.xs),
-                                      Text(
-                                        member.role == 'admin'
-                                            ? 'Admin'
-                                            : 'Staff',
-                                        style: Theme.of(
-                                          context,
-                                        ).textTheme.bodyMedium,
-                                      ),
-                                    ],
-                                  );
-                                  final badge = AppBadge(
-                                    label: member.isActive
-                                        ? 'Active'
-                                        : 'Inactive',
-                                  );
-                                  final actions = Wrap(
-                                    spacing: AppSpacing.xs,
-                                    children: [
-                                      IconButton(
-                                        onPressed: () => _showStaffSheet(
-                                          context,
-                                          ref,
-                                          member: member,
-                                        ),
-                                        icon: const Icon(Icons.edit_outlined),
-                                      ),
-                                      IconButton(
-                                        onPressed: () => _showPinResetSheet(
-                                          context,
-                                          ref,
-                                          member,
-                                        ),
-                                        icon: const Icon(Icons.pin_outlined),
-                                      ),
-                                      IconButton(
-                                        onPressed: member.isActive
-                                            ? () => _deactivateStaff(
-                                                context,
-                                                ref,
-                                                member,
-                                              )
-                                            : null,
-                                        icon: const Icon(
-                                          Icons.person_off_outlined,
-                                        ),
-                                      ),
-                                    ],
-                                  );
-
-                                  return Column(
-                                    crossAxisAlignment:
-                                        CrossAxisAlignment.start,
-                                    children: [
-                                      if (stack) ...[
-                                        identity,
-                                        const SizedBox(height: AppSpacing.sm),
-                                        badge,
-                                      ] else
-                                        Row(
-                                          crossAxisAlignment:
-                                              CrossAxisAlignment.start,
-                                          children: [
-                                            Expanded(child: identity),
-                                            badge,
-                                          ],
-                                        ),
-                                      const SizedBox(height: AppSpacing.md),
-                                      if (stack) ...[
-                                        Text(
-                                          member.lastLoginAt == null
-                                              ? 'No login recorded yet'
-                                              : 'Last login ${DateFormatter.dateTime(member.lastLoginAt!)}',
-                                          style: Theme.of(
-                                            context,
-                                          ).textTheme.bodyMedium,
-                                        ),
-                                        const SizedBox(height: AppSpacing.sm),
-                                        actions,
-                                      ] else
-                                        Row(
-                                          crossAxisAlignment:
-                                              CrossAxisAlignment.start,
-                                          children: [
-                                            Expanded(
-                                              child: Text(
-                                                member.lastLoginAt == null
-                                                    ? 'No login recorded yet'
-                                                    : 'Last login ${DateFormatter.dateTime(member.lastLoginAt!)}',
-                                                style: Theme.of(
-                                                  context,
-                                                ).textTheme.bodyMedium,
-                                              ),
-                                            ),
-                                            actions,
-                                          ],
-                                        ),
-                                    ],
-                                  );
-                                },
-                              ),
-                            ),
-                          ),
-                        )
-                        .toList(),
-                  );
+                  return _staffTable(context, ref, staff);
                 },
               ),
               const SizedBox(height: AppSpacing.xl),
-              _SectionHeader(
-                title: 'Treatment Master',
-                action: AppButton(
-                  label: 'Add Treatment',
-                  icon: Icons.add_rounded,
-                  expanded: false,
-                  onPressed: () => _showTreatmentSheet(context, ref),
-                ),
-              ),
-              const SizedBox(height: AppSpacing.md),
-              _SectionBody<List<TreatmentMaster>>(
-                state: treatmentsState,
-                onRetry: () => ref.invalidate(treatmentsProvider),
-                builder: (items) => _masterList(
-                  context,
-                  items: items
-                      .map(
-                        (item) => _MasterTileData(
-                          id: item.id,
-                          title: item.name,
-                          subtitle: item.description ?? '',
-                          isActive: item.isActive,
-                          onEdit: () => _showTreatmentSheet(
-                            context,
-                            ref,
-                            treatment: item,
-                          ),
-                        ),
-                      )
-                      .toList(),
-                ),
-              ),
-              const SizedBox(height: AppSpacing.xl),
-              _SectionHeader(
-                title: 'Medication Master',
-                action: AppButton(
-                  label: 'Add Medication',
-                  icon: Icons.add_rounded,
-                  expanded: false,
-                  onPressed: () => _showMedicationSheet(context, ref),
-                ),
-              ),
-              const SizedBox(height: AppSpacing.md),
-              _SectionBody<List<MedicationMaster>>(
-                state: medicationsState,
-                onRetry: () => ref.invalidate(medicationsProvider),
-                builder: (items) => _masterList(
-                  context,
-                  items: items
-                      .map(
-                        (item) => _MasterTileData(
-                          id: item.id,
-                          title: item.name,
-                          subtitle: [item.defaultDosage, item.description]
-                              .whereType<String>()
-                              .where((value) => value.isNotEmpty)
-                              .join(' • '),
-                          isActive: item.isActive,
-                          onEdit: () => _showMedicationSheet(
-                            context,
-                            ref,
-                            medication: item,
-                          ),
-                        ),
-                      )
-                      .toList(),
-                ),
-              ),
-              const SizedBox(height: AppSpacing.xl),
-              const _SectionHeader(title: 'Recent Activity'),
-              const SizedBox(height: AppSpacing.md),
-              _SectionBody<List<ActivityLogItem>>(
-                state: logsState,
-                onRetry: () => ref.invalidate(activityLogsProvider),
-                builder: (logs) {
-                  if (logs.isEmpty) {
-                    return const AppEmptyState(
-                      icon: Icons.history_toggle_off_rounded,
-                      message: 'No activity logs found.',
+              LayoutBuilder(
+                builder: (context, constraints) {
+                  final stack = constraints.maxWidth < 840;
+                  final treatments = _MasterColumn(
+                    header: _SectionHeader(
+                      title: 'Treatments',
+                      action: TextButton.icon(
+                        onPressed: () => _showTreatmentSheet(context, ref),
+                        icon: const Icon(Icons.add_circle_outline, size: 18),
+                        label: const Text('Add Treatment'),
+                      ),
+                    ),
+                    body: _SectionBody<List<TreatmentMaster>>(
+                      state: treatmentsState,
+                      onRetry: () => ref.invalidate(treatmentsProvider),
+                      builder: (items) => _treatmentGrid(context, ref, items),
+                    ),
+                  );
+                  final medications = _MasterColumn(
+                    header: _SectionHeader(
+                      title: 'Medications',
+                      action: TextButton.icon(
+                        onPressed: () => _showMedicationSheet(context, ref),
+                        icon: const Icon(Icons.add_circle_outline, size: 18),
+                        label: const Text('Add Medication'),
+                      ),
+                    ),
+                    body: _SectionBody<List<MedicationMaster>>(
+                      state: medicationsState,
+                      onRetry: () => ref.invalidate(medicationsProvider),
+                      builder: (items) => _medicationList(context, ref, items),
+                    ),
+                  );
+                  if (stack) {
+                    return Column(
+                      children: [
+                        treatments,
+                        const SizedBox(height: AppSpacing.xl),
+                        medications,
+                      ],
                     );
                   }
-                  return Column(
-                    children: logs
-                        .map(
-                          (log) => Padding(
-                            padding: const EdgeInsets.only(
-                              bottom: AppSpacing.md,
-                            ),
-                            child: AppCard(
-                              child: LayoutBuilder(
-                                builder: (context, constraints) {
-                                  final stack = constraints.maxWidth < 480;
-
-                                  return Column(
-                                    crossAxisAlignment:
-                                        CrossAxisAlignment.start,
-                                    children: [
-                                      if (stack) ...[
-                                        Text(
-                                          '${log.action} • ${log.entityType}',
-                                          style: Theme.of(
-                                            context,
-                                          ).textTheme.titleMedium,
-                                        ),
-                                        const SizedBox(height: AppSpacing.xs),
-                                        Text(
-                                          DateFormatter.dateTime(log.createdAt),
-                                          style: Theme.of(
-                                            context,
-                                          ).textTheme.bodyMedium,
-                                        ),
-                                      ] else
-                                        Row(
-                                          crossAxisAlignment:
-                                              CrossAxisAlignment.start,
-                                          children: [
-                                            Expanded(
-                                              child: Text(
-                                                '${log.action} • ${log.entityType}',
-                                                style: Theme.of(
-                                                  context,
-                                                ).textTheme.titleMedium,
-                                              ),
-                                            ),
-                                            const SizedBox(
-                                              width: AppSpacing.md,
-                                            ),
-                                            Text(
-                                              DateFormatter.dateTime(
-                                                log.createdAt,
-                                              ),
-                                              style: Theme.of(
-                                                context,
-                                              ).textTheme.bodyMedium,
-                                            ),
-                                          ],
-                                        ),
-                                      if (log.entityId != null) ...[
-                                        const SizedBox(height: AppSpacing.sm),
-                                        Text(
-                                          'Entity: ${log.entityId}',
-                                          style: Theme.of(
-                                            context,
-                                          ).textTheme.bodyMedium,
-                                        ),
-                                      ],
-                                      if ((log.details ?? {}).isNotEmpty) ...[
-                                        const SizedBox(height: AppSpacing.sm),
-                                        Text(
-                                          log.details.toString(),
-                                          style: Theme.of(
-                                            context,
-                                          ).textTheme.bodyMedium,
-                                        ),
-                                      ],
-                                    ],
-                                  );
-                                },
-                              ),
-                            ),
-                          ),
-                        )
-                        .toList(),
+                  return Row(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Expanded(child: treatments),
+                      const SizedBox(width: 32),
+                      Expanded(child: medications),
+                    ],
                   );
                 },
               ),
@@ -389,80 +148,194 @@ class AdminPanelScreen extends ConsumerWidget {
     );
   }
 
-  Widget _masterList(
-    BuildContext context, {
-    required List<_MasterTileData> items,
-  }) {
-    if (items.isEmpty) {
-      return const AppEmptyState(
-        icon: Icons.playlist_add_check_circle_outlined,
-        message: 'No items found.',
-      );
-    }
+  Widget _staffTable(
+    BuildContext context,
+    WidgetRef ref,
+    List<StaffMember> staff,
+  ) {
+    return AppCard(
+      padding: EdgeInsets.zero,
+      child: LayoutBuilder(
+        builder: (context, constraints) {
+          if (constraints.maxWidth < 720) {
+            return Column(
+              children: staff
+                  .map(
+                    (member) => ListTile(
+                      leading: CircleAvatar(
+                        backgroundColor: AppColors.surfaceAccent,
+                        foregroundColor: AppColors.accentDeep,
+                        child: Text(_initials(member.name)),
+                      ),
+                      title: Text(member.name),
+                      subtitle: Text(
+                        member.jobTitle?.isNotEmpty == true
+                            ? member.jobTitle!
+                            : member.role,
+                      ),
+                      trailing: IconButton(
+                        onPressed: () =>
+                            _showStaffSheet(context, ref, member: member),
+                        icon: const Icon(Icons.edit_outlined),
+                      ),
+                    ),
+                  )
+                  .toList(),
+            );
+          }
 
-    return Column(
-      children: items
-          .map(
-            (item) => Padding(
-              padding: const EdgeInsets.only(bottom: AppSpacing.md),
-              child: AppCard(
-                child: LayoutBuilder(
-                  builder: (context, constraints) {
-                    final stack = constraints.maxWidth < 440;
-                    final content = Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          item.title,
-                          style: Theme.of(context).textTheme.titleMedium,
-                        ),
-                        if (item.subtitle.isNotEmpty) ...[
-                          const SizedBox(height: AppSpacing.xs),
-                          Text(
-                            item.subtitle,
-                            style: Theme.of(context).textTheme.bodyMedium,
-                          ),
-                        ],
-                      ],
-                    );
-                    final controls = Wrap(
-                      spacing: AppSpacing.sm,
-                      crossAxisAlignment: WrapCrossAlignment.center,
-                      children: [
-                        AppBadge(label: item.isActive ? 'Active' : 'Inactive'),
-                        IconButton(
-                          onPressed: item.onEdit,
-                          icon: const Icon(Icons.edit_outlined),
-                        ),
-                      ],
-                    );
-
-                    if (stack) {
-                      return Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          content,
-                          const SizedBox(height: AppSpacing.sm),
-                          controls,
-                        ],
-                      );
-                    }
-
-                    return Row(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Expanded(child: content),
-                        const SizedBox(width: AppSpacing.md),
-                        controls,
-                      ],
-                    );
-                  },
+          return Column(
+            children: [
+              Container(
+                color: AppColors.surfaceMuted,
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 24,
+                  vertical: 14,
+                ),
+                child: const Row(
+                  children: [
+                    Expanded(flex: 3, child: Text('MEMBER')),
+                    Expanded(flex: 2, child: Text('ROLE')),
+                    Expanded(flex: 3, child: Text('SCHEDULE')),
+                    SizedBox(width: 95, child: Text('STATUS')),
+                    SizedBox(width: 150, child: Text('ACTIONS')),
+                  ],
                 ),
               ),
-            ),
-          )
-          .toList(),
+              for (var index = 0; index < staff.length; index++) ...[
+                _StaffRow(
+                  member: staff[index],
+                  onEdit: () =>
+                      _showStaffSheet(context, ref, member: staff[index]),
+                  onPin: () => _showPinResetSheet(context, ref, staff[index]),
+                  onDeactivate: staff[index].isActive
+                      ? () => _deactivateStaff(context, ref, staff[index])
+                      : null,
+                ),
+                if (index < staff.length - 1) const Divider(height: 1),
+              ],
+            ],
+          );
+        },
+      ),
     );
+  }
+
+  Widget _treatmentGrid(
+    BuildContext context,
+    WidgetRef ref,
+    List<TreatmentMaster> items,
+  ) {
+    if (items.isEmpty) {
+      return const AppEmptyState(
+        icon: Icons.medical_services_outlined,
+        message: 'No treatments found.',
+      );
+    }
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final width = (constraints.maxWidth - 16) / 2;
+        return Wrap(
+          spacing: 16,
+          runSpacing: 16,
+          children: items
+              .map(
+                (item) => SizedBox(
+                  width: constraints.maxWidth < 420
+                      ? constraints.maxWidth
+                      : width,
+                  height: 166,
+                  child: AppCard(
+                    onTap: () =>
+                        _showTreatmentSheet(context, ref, treatment: item),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Container(
+                          width: 46,
+                          height: 46,
+                          decoration: BoxDecoration(
+                            color: AppColors.surfaceAccent,
+                            borderRadius: BorderRadius.circular(8),
+                          ),
+                          child: const Icon(
+                            Icons.medical_services_outlined,
+                            color: AppColors.info,
+                          ),
+                        ),
+                        const Spacer(),
+                        Text(
+                          item.name,
+                          style: Theme.of(context).textTheme.titleMedium,
+                        ),
+                        if ((item.description ?? '').isNotEmpty)
+                          Text(
+                            item.description!,
+                            maxLines: 2,
+                            overflow: TextOverflow.ellipsis,
+                            style: Theme.of(context).textTheme.bodyMedium,
+                          ),
+                      ],
+                    ),
+                  ),
+                ),
+              )
+              .toList(),
+        );
+      },
+    );
+  }
+
+  Widget _medicationList(
+    BuildContext context,
+    WidgetRef ref,
+    List<MedicationMaster> items,
+  ) {
+    if (items.isEmpty) {
+      return const AppEmptyState(
+        icon: Icons.medication_outlined,
+        message: 'No medications found.',
+      );
+    }
+    return AppCard(
+      padding: const EdgeInsets.symmetric(vertical: 4),
+      child: Column(
+        children: items
+            .map(
+              (item) => ListTile(
+                leading: Container(
+                  width: 4,
+                  height: 48,
+                  decoration: BoxDecoration(
+                    color: AppColors.info,
+                    borderRadius: BorderRadius.circular(3),
+                  ),
+                ),
+                title: Text(item.name),
+                subtitle: Text(
+                  [item.defaultDosage, item.description]
+                      .whereType<String>()
+                      .where((value) => value.isNotEmpty)
+                      .join(' • '),
+                  maxLines: 2,
+                  overflow: TextOverflow.ellipsis,
+                ),
+                trailing: IconButton(
+                  onPressed: () =>
+                      _showMedicationSheet(context, ref, medication: item),
+                  icon: const Icon(Icons.more_vert_rounded),
+                ),
+              ),
+            )
+            .toList(),
+      ),
+    );
+  }
+
+  String _initials(String name) {
+    final parts = name.trim().split(RegExp(r'\s+'));
+    if (parts.isEmpty) return '?';
+    return parts.take(2).map((part) => part[0].toUpperCase()).join();
   }
 
   Future<void> _deactivateStaff(
@@ -501,6 +374,14 @@ class AdminPanelScreen extends ConsumerWidget {
   }) {
     final nameController = TextEditingController(text: member?.name ?? '');
     final pinController = TextEditingController();
+    final emailController = TextEditingController(text: member?.email ?? '');
+    final mobileController = TextEditingController(text: member?.mobile ?? '');
+    final jobTitleController = TextEditingController(
+      text: member?.jobTitle ?? '',
+    );
+    final scheduleController = TextEditingController(
+      text: member?.schedule ?? '',
+    );
     String role = member?.role ?? 'staff';
     bool isActive = member?.isActive ?? true;
 
@@ -520,6 +401,25 @@ class AdminPanelScreen extends ConsumerWidget {
               ),
               const SizedBox(height: AppSpacing.md),
               AppTextField(controller: nameController, label: 'Name'),
+              const SizedBox(height: AppSpacing.md),
+              AppTextField(controller: emailController, label: 'Email'),
+              const SizedBox(height: AppSpacing.md),
+              AppTextField(
+                controller: mobileController,
+                label: 'Phone Number',
+                keyboardType: TextInputType.phone,
+              ),
+              const SizedBox(height: AppSpacing.md),
+              AppTextField(
+                controller: jobTitleController,
+                label: 'Job Title / Speciality',
+              ),
+              const SizedBox(height: AppSpacing.md),
+              AppTextField(
+                controller: scheduleController,
+                label: 'Schedule',
+                hint: 'e.g. Mon - Fri, 08:00 - 17:00',
+              ),
               const SizedBox(height: AppSpacing.md),
               DropdownButtonFormField<String>(
                 initialValue: role,
@@ -560,7 +460,7 @@ class AdminPanelScreen extends ConsumerWidget {
                       Validators.pin(pinController.text) != null) {
                     SnackService.showError(
                       context,
-                      'Enter a valid 4 to 8 digit PIN.',
+                      'Enter a valid 4 digit PIN.',
                     );
                     return;
                   }
@@ -572,6 +472,18 @@ class AdminPanelScreen extends ConsumerWidget {
                               name: nameController.text.trim(),
                               role: role,
                               pin: pinController.text.trim(),
+                              email: emailController.text.trim().isEmpty
+                                  ? null
+                                  : emailController.text.trim(),
+                              mobile: mobileController.text.trim().isEmpty
+                                  ? null
+                                  : mobileController.text.trim(),
+                              jobTitle: jobTitleController.text.trim().isEmpty
+                                  ? null
+                                  : jobTitleController.text.trim(),
+                              schedule: scheduleController.text.trim().isEmpty
+                                  ? null
+                                  : scheduleController.text.trim(),
                             )
                       : await ref
                             .read(adminRepositoryProvider)
@@ -580,6 +492,18 @@ class AdminPanelScreen extends ConsumerWidget {
                               name: nameController.text.trim(),
                               role: role,
                               isActive: isActive,
+                              email: emailController.text.trim().isEmpty
+                                  ? null
+                                  : emailController.text.trim(),
+                              mobile: mobileController.text.trim().isEmpty
+                                  ? null
+                                  : mobileController.text.trim(),
+                              jobTitle: jobTitleController.text.trim().isEmpty
+                                  ? null
+                                  : jobTitleController.text.trim(),
+                              schedule: scheduleController.text.trim().isEmpty
+                                  ? null
+                                  : scheduleController.text.trim(),
                             );
 
                   if (!context.mounted) {
@@ -647,10 +571,7 @@ class AdminPanelScreen extends ConsumerWidget {
                   return;
                 }
                 if (Validators.pin(pinController.text) != null) {
-                  SnackService.showError(
-                    context,
-                    'Enter a valid 4 to 8 digit PIN.',
-                  );
+                  SnackService.showError(context, 'Enter a valid 4 digit PIN.');
                   return;
                 }
                 final result = await ref
@@ -855,6 +776,138 @@ class AdminPanelScreen extends ConsumerWidget {
   }
 }
 
+class _StaffRow extends StatelessWidget {
+  const _StaffRow({
+    required this.member,
+    required this.onEdit,
+    required this.onPin,
+    required this.onDeactivate,
+  });
+
+  final StaffMember member;
+  final VoidCallback onEdit;
+  final VoidCallback onPin;
+  final VoidCallback? onDeactivate;
+
+  @override
+  Widget build(BuildContext context) {
+    final parts = member.name.trim().split(RegExp(r'\s+'));
+    final initials = parts.take(2).map((part) => part[0].toUpperCase()).join();
+    final roleLabel = member.jobTitle?.isNotEmpty == true
+        ? member.jobTitle!
+        : member.role == 'admin'
+        ? 'Administrator'
+        : 'Clinical Staff';
+    final schedule = (member.schedule ?? '').isNotEmpty
+        ? member.schedule!
+        : member.lastLoginAt == null
+        ? 'Schedule not set'
+        : 'Last login ${DateFormatter.dateTime(member.lastLoginAt!)}';
+
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 14),
+      child: Row(
+        children: [
+          Expanded(
+            flex: 3,
+            child: Row(
+              children: [
+                CircleAvatar(
+                  backgroundColor: AppColors.surfaceAccent,
+                  foregroundColor: AppColors.accentDeep,
+                  child: Text(initials),
+                ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Text(
+                    member.name,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: Theme.of(context).textTheme.titleMedium,
+                  ),
+                ),
+              ],
+            ),
+          ),
+          Expanded(
+            flex: 2,
+            child: Text(
+              roleLabel,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+            ),
+          ),
+          Expanded(
+            flex: 3,
+            child: Text(schedule, maxLines: 1, overflow: TextOverflow.ellipsis),
+          ),
+          SizedBox(
+            width: 95,
+            child: AppBadge(label: member.isActive ? 'Active' : 'Inactive'),
+          ),
+          SizedBox(
+            width: 150,
+            child: Wrap(
+              spacing: 2,
+              children: [
+                IconButton(
+                  tooltip: 'Edit staff',
+                  constraints: const BoxConstraints.tightFor(
+                    width: 42,
+                    height: 42,
+                  ),
+                  padding: EdgeInsets.zero,
+                  onPressed: onEdit,
+                  icon: const Icon(Icons.edit_outlined),
+                ),
+                IconButton(
+                  tooltip: 'Reset PIN',
+                  constraints: const BoxConstraints.tightFor(
+                    width: 42,
+                    height: 42,
+                  ),
+                  padding: EdgeInsets.zero,
+                  onPressed: onPin,
+                  icon: const Icon(Icons.pin_outlined),
+                ),
+                IconButton(
+                  tooltip: 'Deactivate',
+                  constraints: const BoxConstraints.tightFor(
+                    width: 42,
+                    height: 42,
+                  ),
+                  padding: EdgeInsets.zero,
+                  onPressed: onDeactivate,
+                  icon: const Icon(Icons.person_off_outlined),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _MasterColumn extends StatelessWidget {
+  const _MasterColumn({required this.header, required this.body});
+
+  final Widget header;
+  final Widget body;
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        header,
+        const SizedBox(height: AppSpacing.md),
+        body,
+      ],
+    );
+  }
+}
+
 class _SectionHeader extends StatelessWidget {
   const _SectionHeader({required this.title, this.action});
 
@@ -889,20 +942,4 @@ class _SectionBody<T> extends StatelessWidget {
       data: builder,
     );
   }
-}
-
-class _MasterTileData {
-  const _MasterTileData({
-    required this.id,
-    required this.title,
-    required this.subtitle,
-    required this.isActive,
-    required this.onEdit,
-  });
-
-  final String id;
-  final String title;
-  final String subtitle;
-  final bool isActive;
-  final VoidCallback onEdit;
 }

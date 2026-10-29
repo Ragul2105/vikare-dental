@@ -5,6 +5,10 @@ class StaffMember {
     required this.role,
     required this.isActive,
     this.lastLoginAt,
+    this.email,
+    this.mobile,
+    this.jobTitle,
+    this.schedule,
   });
 
   final String id;
@@ -12,6 +16,10 @@ class StaffMember {
   final String role;
   final bool isActive;
   final DateTime? lastLoginAt;
+  final String? email;
+  final String? mobile;
+  final String? jobTitle;
+  final String? schedule;
 
   factory StaffMember.fromJson(Map<String, dynamic> json) => StaffMember(
     id: json['id'] as String,
@@ -21,6 +29,10 @@ class StaffMember {
     lastLoginAt: json['last_login_at'] == null
         ? null
         : DateTime.parse(json['last_login_at'] as String),
+    email: json['email'] as String?,
+    mobile: json['mobile'] as String?,
+    jobTitle: json['job_title'] as String?,
+    schedule: json['schedule'] as String?,
   );
 }
 

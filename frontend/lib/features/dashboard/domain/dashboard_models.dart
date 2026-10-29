@@ -48,6 +48,10 @@ class DashboardSummary {
     required this.appointments,
     required this.totalPatients,
     required this.totalStaff,
+    required this.completedToday,
+    required this.newPatientsThisMonth,
+    required this.topTreatments,
+    required this.appointmentTrend,
   });
 
   final DateTime today;
@@ -55,6 +59,10 @@ class DashboardSummary {
   final List<DashboardAppointment> appointments;
   final int totalPatients;
   final int totalStaff;
+  final int completedToday;
+  final int newPatientsThisMonth;
+  final List<DashboardTreatment> topTreatments;
+  final List<DashboardTrendPoint> appointmentTrend;
 
   factory DashboardSummary.fromJson(
     Map<String, dynamic> json,
@@ -68,6 +76,18 @@ class DashboardSummary {
         .toList(growable: false),
     totalPatients: json['total_patients'] as int? ?? 0,
     totalStaff: json['total_staff'] as int? ?? 0,
+    completedToday: json['completed_today'] as int? ?? 0,
+    newPatientsThisMonth: json['new_patients_this_month'] as int? ?? 0,
+    topTreatments: (json['top_treatments'] as List<dynamic>? ?? const [])
+        .map(
+          (item) => DashboardTreatment.fromJson(item as Map<String, dynamic>),
+        )
+        .toList(growable: false),
+    appointmentTrend: (json['appointment_trend'] as List<dynamic>? ?? const [])
+        .map(
+          (item) => DashboardTrendPoint.fromJson(item as Map<String, dynamic>),
+        )
+        .toList(growable: false),
   );
 
   Map<String, dynamic> toJson() => {
@@ -76,5 +96,35 @@ class DashboardSummary {
     'appointments': appointments.map((item) => item.toJson()).toList(),
     'total_patients': totalPatients,
     'total_staff': totalStaff,
+    'completed_today': completedToday,
+    'new_patients_this_month': newPatientsThisMonth,
+    'top_treatments': topTreatments.map((item) => item.toJson()).toList(),
+    'appointment_trend': appointmentTrend.map((item) => item.toJson()).toList(),
   };
+}
+
+class DashboardTreatment {
+  const DashboardTreatment({required this.name, required this.count});
+  final String name;
+  final int count;
+
+  factory DashboardTreatment.fromJson(Map<String, dynamic> json) =>
+      DashboardTreatment(
+        name: json['name'] as String,
+        count: json['count'] as int? ?? 0,
+      );
+  Map<String, dynamic> toJson() => {'name': name, 'count': count};
+}
+
+class DashboardTrendPoint {
+  const DashboardTrendPoint({required this.month, required this.count});
+  final String month;
+  final int count;
+
+  factory DashboardTrendPoint.fromJson(Map<String, dynamic> json) =>
+      DashboardTrendPoint(
+        month: json['month'] as String,
+        count: json['count'] as int? ?? 0,
+      );
+  Map<String, dynamic> toJson() => {'month': month, 'count': count};
 }

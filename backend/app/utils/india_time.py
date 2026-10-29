@@ -24,3 +24,7 @@ def india_date_range_bounds(start_date: date, days: int) -> tuple[datetime, date
 
 def india_today() -> date:
     return datetime.now(INDIA_TZ).date()
+
+
+def india_now() -> datetime:
+    return datetime.now(INDIA_TZ)

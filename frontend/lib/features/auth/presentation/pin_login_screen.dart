@@ -1,19 +1,17 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-import '../../../core/api/api_response.dart';
 import '../../../core/api/api_client.dart';
+import '../../../core/api/api_response.dart';
 import '../../../core/auth/auth_controller.dart';
 import '../../../core/models/user.dart';
 import '../../../core/theme/app_colors.dart';
-import '../../../core/theme/app_spacing.dart';
 import '../../../core/widgets/app_button.dart';
 import '../../../core/widgets/app_error_view.dart';
 import '../../../core/widgets/app_loading.dart';
 import '../../../core/widgets/snack_service.dart';
 import '../data/auth_repository.dart';
 import 'widgets/pin_pad.dart';
-import 'widgets/user_selector.dart';
 
 final authUsersProvider = FutureProvider<List<UserSummary>>((ref) async {
   final result = await AuthRepository(
@@ -30,15 +28,14 @@ class PinLoginScreen extends ConsumerStatefulWidget {
 }
 
 class _PinLoginScreenState extends ConsumerState<PinLoginScreen> {
+  String _role = 'admin';
   UserSummary? _selectedUser;
   String _pin = '';
-  String? _error;
 
   @override
   Widget build(BuildContext context) {
     ref.listen<AuthState>(authControllerProvider, (_, next) {
       if (next.errorMessage != null && mounted) {
-        setState(() => _error = next.errorMessage);
         SnackService.showError(context, next.errorMessage!);
       }
     });
@@ -47,326 +44,315 @@ class _PinLoginScreenState extends ConsumerState<PinLoginScreen> {
     final authState = ref.watch(authControllerProvider);
 
     return Scaffold(
-      body: Container(
-        decoration: const BoxDecoration(
-          gradient: LinearGradient(
-            begin: Alignment.topLeft,
-            end: Alignment.bottomRight,
-            colors: [Color(0xFFF7F1E5), Color(0xFFE8F0EA), Color(0xFFDCEAE8)],
-          ),
-        ),
-        child: SafeArea(
-          child: LayoutBuilder(
-            builder: (context, constraints) {
-              final isCompact = constraints.maxWidth < 720;
-              final pagePadding = isCompact ? AppSpacing.md : AppSpacing.xl;
-              final minHeight = (constraints.maxHeight - (pagePadding * 2))
-                  .clamp(0.0, double.infinity)
-                  .toDouble();
-
-              final accessPanel = usersState.when(
-                loading: () => const AppLoading(),
-                error: (error, _) => AppErrorView(
-                  message: error is AppError
-                      ? error.message
-                      : 'Failed to load staff profiles.',
-                  onRetry: () => ref.invalidate(authUsersProvider),
+      backgroundColor: const Color(0xFFF7FEFF),
+      body: SafeArea(
+        child: Stack(
+          children: [
+            Positioned(
+              left: 24,
+              top: 24,
+              child: Container(
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 14,
+                  vertical: 10,
                 ),
-                data: (users) => _LoginAccessCard(
-                  users: users,
-                  selectedUser: _selectedUser,
-                  pinLength: _pin.length,
-                  isLoading: authState.isLoading,
-                  compact: isCompact,
-                  onSelect: (user) {
-                    setState(() {
-                      _selectedUser = user;
-                      _pin = '';
-                      _error = null;
-                    });
-                  },
-                  onDigit: _appendDigit,
-                  onDelete: _deleteDigit,
-                  onSubmit: _canSubmit ? _submit : null,
-                ),
-              );
-
-              return SingleChildScrollView(
-                padding: EdgeInsets.all(pagePadding),
-                child: ConstrainedBox(
-                  constraints: BoxConstraints(minHeight: minHeight),
-                  child: Center(
-                    child: ConstrainedBox(
-                      constraints: BoxConstraints(
-                        maxWidth: isCompact ? 520 : 860,
-                      ),
-                      child: isCompact
-                          ? Column(
-                              crossAxisAlignment: CrossAxisAlignment.stretch,
-                              children: [
-                                _LoginIntroCard(
-                                  selectedUser: _selectedUser,
-                                  pinLength: _pin.length,
-                                  error: _error,
-                                  compact: true,
-                                ),
-                                const SizedBox(height: AppSpacing.lg),
-                                accessPanel,
-                              ],
-                            )
-                          : Row(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                Expanded(
-                                  child: _LoginIntroCard(
-                                    selectedUser: _selectedUser,
-                                    pinLength: _pin.length,
-                                    error: _error,
-                                    compact: false,
-                                  ),
-                                ),
-                                const SizedBox(width: AppSpacing.xl),
-                                Expanded(child: accessPanel),
-                              ],
-                            ),
+                decoration: BoxDecoration(
+                  color: Colors.white,
+                  border: Border.all(color: AppColors.border),
+                  borderRadius: BorderRadius.circular(24),
+                  boxShadow: const [
+                    BoxShadow(
+                      color: Color(0x16000000),
+                      blurRadius: 3,
+                      offset: Offset(0, 1),
                     ),
-                  ),
+                  ],
                 ),
-              );
-            },
-          ),
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    const CircleAvatar(
+                      radius: 4,
+                      backgroundColor: AppColors.accent,
+                    ),
+                    const SizedBox(width: 10),
+                    Text(
+                      'Clinic Server Online',
+                      style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                        color: AppColors.textPrimary,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+            LayoutBuilder(
+              builder: (context, constraints) {
+                final compact = constraints.maxWidth < 900;
+                final logoSize = (constraints.maxHeight * 0.55)
+                    .clamp(220.0, 430.0)
+                    .toDouble();
+                return Padding(
+                  padding: EdgeInsets.fromLTRB(24, compact ? 74 : 36, 24, 24),
+                  child: compact
+                      ? Center(
+                          child: FittedBox(
+                            fit: BoxFit.scaleDown,
+                            child: _buildAccess(
+                              usersState,
+                              authState,
+                              compact: true,
+                            ),
+                          ),
+                        )
+                      : Row(
+                          children: [
+                            Expanded(
+                              child: Center(
+                                child: Image.asset(
+                                  'assets/images/vikare-logo.jpeg',
+                                  width: logoSize,
+                                  height: logoSize,
+                                  fit: BoxFit.contain,
+                                ),
+                              ),
+                            ),
+                            const SizedBox(width: 40),
+                            FittedBox(
+                              fit: BoxFit.scaleDown,
+                              child: _buildAccess(
+                                usersState,
+                                authState,
+                                compact: false,
+                              ),
+                            ),
+                          ],
+                        ),
+                );
+              },
+            ),
+          ],
         ),
       ),
     );
   }
 
-  bool get _canSubmit => _selectedUser != null && _pin.length >= 4;
-
-  void _appendDigit(String digit) {
-    if (_pin.length >= 8) {
-      return;
-    }
-
-    setState(() {
-      _pin += digit;
-      _error = null;
-    });
+  Widget _buildAccess(
+    AsyncValue<List<UserSummary>> usersState,
+    AuthState authState, {
+    required bool compact,
+  }) {
+    return Container(
+      width: compact ? 480 : 500,
+      padding: EdgeInsets.all(compact ? 28 : 40),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        border: Border.all(color: const Color(0xFFB8C5C9)),
+        borderRadius: BorderRadius.circular(14),
+      ),
+      child: usersState.when(
+        loading: () => const SizedBox(height: 560, child: AppLoading()),
+        error: (error, _) => SizedBox(
+          height: 560,
+          child: AppErrorView(
+            message: error is AppError
+                ? error.message
+                : 'Failed to load clinic users.',
+            onRetry: () => ref.invalidate(authUsersProvider),
+          ),
+        ),
+        data: (users) {
+          final roleUsers = users.where((item) => item.role == _role).toList();
+          final selected = roleUsers.any((item) => item.id == _selectedUser?.id)
+              ? _selectedUser
+              : null;
+          return Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Image.asset(
+                'assets/images/vikare-logo.jpeg',
+                width: 62,
+                height: 62,
+                fit: BoxFit.cover,
+              ),
+              const SizedBox(height: 6),
+              Text(
+                'Vikare Dental Clinic',
+                style: Theme.of(context).textTheme.displayMedium?.copyWith(
+                  fontFamily: 'serif',
+                  fontWeight: FontWeight.w500,
+                ),
+              ),
+              const SizedBox(height: 16),
+              Container(
+                height: 44,
+                decoration: BoxDecoration(
+                  color: AppColors.surface,
+                  border: Border.all(color: AppColors.border),
+                  borderRadius: BorderRadius.circular(4),
+                ),
+                child: Row(
+                  children: [
+                    _RoleTab(
+                      label: 'Admin',
+                      selected: _role == 'admin',
+                      onTap: () => _setRole('admin'),
+                    ),
+                    _RoleTab(
+                      label: 'Staffs',
+                      selected: _role == 'staff',
+                      onTap: () => _setRole('staff'),
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(height: 28),
+              Align(
+                alignment: Alignment.centerLeft,
+                child: Text(
+                  'Username',
+                  style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                    color: AppColors.textPrimary,
+                  ),
+                ),
+              ),
+              const SizedBox(height: 6),
+              DropdownButtonFormField<String>(
+                initialValue: selected?.id,
+                isExpanded: true,
+                decoration: const InputDecoration(
+                  hintText: 'Select username',
+                  prefixIcon: Icon(Icons.person_outline_rounded),
+                ),
+                items: roleUsers
+                    .map(
+                      (user) => DropdownMenuItem(
+                        value: user.id,
+                        child: Text(user.name),
+                      ),
+                    )
+                    .toList(),
+                onChanged: (id) => setState(() {
+                  _selectedUser = roleUsers
+                      .where((item) => item.id == id)
+                      .firstOrNull;
+                  _pin = '';
+                }),
+              ),
+              const SizedBox(height: 24),
+              Text(
+                'Enter 4-Digit Security PIN',
+                style: Theme.of(
+                  context,
+                ).textTheme.bodyMedium?.copyWith(color: AppColors.textPrimary),
+              ),
+              const SizedBox(height: 14),
+              Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: List.generate(4, (index) {
+                  final filled = index < _pin.length;
+                  return Container(
+                    width: 12,
+                    height: 12,
+                    margin: const EdgeInsets.symmetric(horizontal: 9),
+                    decoration: BoxDecoration(
+                      color: filled ? AppColors.accent : Colors.white,
+                      border: Border.all(
+                        color: filled
+                            ? AppColors.accent
+                            : const Color(0xFFB8C5C9),
+                        width: 2,
+                      ),
+                      shape: BoxShape.circle,
+                    ),
+                  );
+                }),
+              ),
+              const SizedBox(height: 24),
+              SizedBox(
+                width: 290,
+                height: 238,
+                child: PinPad(
+                  onDigit: (digit) {
+                    if (_pin.length < 4) {
+                      setState(() => _pin += digit);
+                    }
+                  },
+                  onDelete: () {
+                    if (_pin.isNotEmpty) {
+                      setState(() => _pin = _pin.substring(0, _pin.length - 1));
+                    }
+                  },
+                ),
+              ),
+              const SizedBox(height: 26),
+              AppButton(
+                label: authState.isLoading ? 'Logging in...' : 'Login',
+                icon: Icons.login_rounded,
+                isLoading: authState.isLoading,
+                onPressed: selected != null && _pin.length == 4
+                    ? _submit
+                    : null,
+              ),
+              const SizedBox(height: 20),
+              TextButton(
+                onPressed: () {},
+                child: const Text('Forgot PIN or Reset PIN?'),
+              ),
+            ],
+          );
+        },
+      ),
+    );
   }
 
-  void _deleteDigit() {
-    if (_pin.isEmpty) {
-      return;
-    }
+  void _setRole(String role) {
     setState(() {
-      _pin = _pin.substring(0, _pin.length - 1);
-      _error = null;
+      _role = role;
+      _selectedUser = null;
+      _pin = '';
     });
   }
 
   Future<void> _submit() async {
-    final selectedUser = _selectedUser;
-    if (selectedUser == null || _pin.length < 4) {
-      return;
-    }
-
+    final selected = _selectedUser;
+    if (selected == null || _pin.length != 4) return;
     final success = await ref
         .read(authControllerProvider.notifier)
-        .login(selectedUser.id, _pin);
-    if (!success && mounted) {
-      setState(() {
-        _pin = '';
-      });
-    }
+        .login(selected.id, _pin);
+    if (!success && mounted) setState(() => _pin = '');
   }
 }
 
-class _LoginIntroCard extends StatelessWidget {
-  const _LoginIntroCard({
-    required this.selectedUser,
-    required this.pinLength,
-    required this.compact,
-    this.error,
+class _RoleTab extends StatelessWidget {
+  const _RoleTab({
+    required this.label,
+    required this.selected,
+    required this.onTap,
   });
 
-  final UserSummary? selectedUser;
-  final int pinLength;
-  final bool compact;
-  final String? error;
+  final String label;
+  final bool selected;
+  final VoidCallback onTap;
 
   @override
   Widget build(BuildContext context) {
-    return Card(
-      color: AppColors.accentDeep,
-      child: Padding(
-        padding: EdgeInsets.all(compact ? AppSpacing.lg : AppSpacing.xl),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(
-              'Dental Clinic',
-              style:
-                  (compact
-                          ? Theme.of(context).textTheme.displayMedium
-                          : Theme.of(context).textTheme.displayLarge)
-                      ?.copyWith(color: Colors.white),
-            ),
-            const SizedBox(height: AppSpacing.md),
-            Text(
-              compact
-                  ? 'Patient intake, appointments, visit notes, prescriptions, and administration in one clinic workspace.'
-                  : 'Fast patient intake, appointment tracking, visit notes, prescriptions, and clinic administration in one tablet-first workspace.',
-              style: Theme.of(context).textTheme.bodyLarge?.copyWith(
-                color: Colors.white.withValues(alpha: 0.85),
+    return Expanded(
+      child: Material(
+        color: selected ? AppColors.accent : Colors.transparent,
+        borderRadius: BorderRadius.circular(4),
+        child: InkWell(
+          onTap: onTap,
+          child: Center(
+            child: Text(
+              label,
+              style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                color: selected ? Colors.white : AppColors.textPrimary,
               ),
             ),
-            SizedBox(height: compact ? AppSpacing.lg : AppSpacing.xl),
-            Container(
-              padding: const EdgeInsets.all(AppSpacing.lg),
-              decoration: BoxDecoration(
-                color: Colors.white.withValues(alpha: 0.08),
-                borderRadius: BorderRadius.circular(AppSpacing.radiusLg),
-                border: Border.all(color: Colors.white.withValues(alpha: 0.15)),
-              ),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    selectedUser == null
-                        ? 'Waiting for profile selection'
-                        : 'Signing in as ${selectedUser!.name}',
-                    style: Theme.of(
-                      context,
-                    ).textTheme.titleLarge?.copyWith(color: Colors.white),
-                  ),
-                  const SizedBox(height: AppSpacing.sm),
-                  Text(
-                    pinLength == 0
-                        ? 'Enter a 4 to 8 digit PIN to continue.'
-                        : '$pinLength digit${pinLength == 1 ? '' : 's'} entered',
-                    style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                      color: Colors.white.withValues(alpha: 0.8),
-                    ),
-                  ),
-                  if (error != null) ...[
-                    const SizedBox(height: AppSpacing.md),
-                    Text(
-                      error!,
-                      style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                        color: const Color(0xFFFFD7D1),
-                      ),
-                    ),
-                  ],
-                ],
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-}
-
-class _LoginAccessCard extends StatelessWidget {
-  const _LoginAccessCard({
-    required this.users,
-    required this.selectedUser,
-    required this.pinLength,
-    required this.isLoading,
-    required this.compact,
-    required this.onSelect,
-    required this.onDigit,
-    required this.onDelete,
-    this.onSubmit,
-  });
-
-  final List<UserSummary> users;
-  final UserSummary? selectedUser;
-  final int pinLength;
-  final bool isLoading;
-  final bool compact;
-  final ValueChanged<UserSummary> onSelect;
-  final ValueChanged<String> onDigit;
-  final VoidCallback onDelete;
-  final VoidCallback? onSubmit;
-
-  @override
-  Widget build(BuildContext context) {
-    final keypadHeight = compact ? 264.0 : 320.0;
-
-    return Card(
-      child: Padding(
-        padding: EdgeInsets.all(compact ? AppSpacing.lg : AppSpacing.xl),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(
-              'Select profile',
-              style: compact
-                  ? Theme.of(context).textTheme.titleLarge
-                  : Theme.of(context).textTheme.displayMedium,
-            ),
-            const SizedBox(height: AppSpacing.sm),
-            Text(
-              'Tap your staff profile, then enter your clinic PIN.',
-              style: Theme.of(context).textTheme.bodyLarge,
-            ),
-            const SizedBox(height: AppSpacing.lg),
-            UserSelector(
-              users: users,
-              selectedUser: selectedUser,
-              onSelect: onSelect,
-            ),
-            const SizedBox(height: AppSpacing.lg),
-            _PinPreview(pinLength: pinLength),
-            const SizedBox(height: AppSpacing.md),
-            SizedBox(
-              height: keypadHeight,
-              child: PinPad(
-                onDigit: onDigit,
-                onDelete: onDelete,
-                onSubmit: onSubmit,
-                canSubmit: onSubmit != null,
-              ),
-            ),
-            const SizedBox(height: AppSpacing.md),
-            AppButton(
-              label: isLoading ? 'Signing in...' : 'Unlock Clinic',
-              icon: Icons.arrow_forward_rounded,
-              isLoading: isLoading,
-              onPressed: onSubmit,
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-}
-
-class _PinPreview extends StatelessWidget {
-  const _PinPreview({required this.pinLength});
-
-  final int pinLength;
-
-  @override
-  Widget build(BuildContext context) {
-    return Wrap(
-      alignment: WrapAlignment.center,
-      spacing: AppSpacing.sm,
-      runSpacing: AppSpacing.sm,
-      children: List<Widget>.generate(8, (index) {
-        final filled = index < pinLength;
-        return AnimatedContainer(
-          duration: const Duration(milliseconds: 120),
-          width: 14,
-          height: 14,
-          decoration: BoxDecoration(
-            color: filled ? AppColors.accent : AppColors.surfaceMuted,
-            shape: BoxShape.circle,
           ),
-        );
-      }),
+        ),
+      ),
     );
   }
 }

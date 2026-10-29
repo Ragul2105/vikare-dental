@@ -12,8 +12,22 @@
       h1, h2 {
         margin-bottom: 8px;
       }
+      h1 {
+        color: #287fb7;
+      }
       .muted {
         color: #6b7280;
+      }
+      .grid {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 10px 24px;
+      }
+      .box {
+        border: 1px solid #d1d5db;
+        border-radius: 10px;
+        padding: 12px;
+        background: #f8fbff;
       }
       .section {
         margin-top: 24px;
@@ -33,14 +47,24 @@
     </style>
   </head>
   <body>
-    <h1>Dental Clinic Prescription</h1>
+    <h1>Vikare Dental Clinic Visit Record</h1>
     <p class="muted">Generated at {{ generated_at.strftime("%d %b %Y %I:%M %p") }}</p>
 
     <div class="section">
       <h2>Patient</h2>
-      <p><strong>Name:</strong> {{ patient.name }}</p>
-      <p><strong>Patient ID:</strong> {{ patient.patient_uid }}</p>
-      <p><strong>Mobile:</strong> {{ patient.mobile }}</p>
+      <div class="grid">
+        <div><strong>Name:</strong> {{ patient.name }}</div>
+        <div><strong>Patient ID:</strong> {{ patient.patient_uid }}</div>
+        <div><strong>Mobile:</strong> {{ patient.mobile }}</div>
+        <div><strong>Age / Gender:</strong> {{ patient.age or "N/A" }} / {{ patient.gender or "N/A" }}</div>
+        <div><strong>Blood Type:</strong> {{ patient.blood_type or "N/A" }}</div>
+        <div><strong>Allergies:</strong> {{ patient.allergies or "N/A" }}</div>
+      </div>
+      <div class="box section">
+        <p><strong>Medical History:</strong> {{ patient.medical_history or "N/A" }}</p>
+        <p><strong>Current Medications:</strong> {{ patient.current_medications or "N/A" }}</p>
+        <p><strong>Past Dental History:</strong> {{ patient.past_dental_history or "N/A" }}</p>
+      </div>
     </div>
 
     <div class="section">
@@ -48,6 +72,10 @@
       <p><strong>Date:</strong> {{ visit.visit_date.strftime("%d %b %Y") }}</p>
       <p><strong>Diagnosis:</strong> {{ visit.diagnosis or "N/A" }}</p>
       <p><strong>Notes:</strong> {{ visit.notes or "N/A" }}</p>
+      {% if visit.follow_up_required %}
+      <p><strong>Follow-up:</strong> {{ visit.follow_up_date.strftime("%d %b %Y") if visit.follow_up_date else "Date pending" }}</p>
+      <p><strong>Follow-up Notes:</strong> {{ visit.follow_up_notes or "N/A" }}</p>
+      {% endif %}
     </div>
 
     <div class="section">
